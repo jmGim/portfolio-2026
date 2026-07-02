@@ -1,0 +1,589 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Embedded IoT Developer Portfolio</title>
+  <meta name="description" content="임베디드 S/W, STM32, ESP32, IoT Edge/Cloud 프로젝트 포트폴리오" />
+  
+  <style>
+    /* CSS Styles - Inlined */
+    :root {
+      --bg: #07111f;
+      --bg-2: #0c1728;
+      --panel: rgba(12, 23, 40, 0.86);
+      --panel-strong: rgba(15, 27, 47, 0.98);
+      --text: #e5edf7;
+      --muted: #91a3b8;
+      --line: rgba(148, 163, 184, 0.22);
+      --cyan: #7dd3fc;
+      --blue: #60a5fa;
+      --green: #34d399;
+      --violet: #a78bfa;
+      --orange: #fb923c;
+      --shadow: 0 24px 80px rgba(0, 0, 0, 0.45);
+      --radius: 24px;
+      font-family: "Pretendard", "Noto Sans KR", "Apple SD Gothic Neo", system-ui, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      background:
+        radial-gradient(circle at 18% 12%, rgba(96, 165, 250, 0.2), transparent 28rem),
+        radial-gradient(circle at 82% 10%, rgba(52, 211, 153, 0.13), transparent 28rem),
+        linear-gradient(135deg, #07111f 0%, #0c1424 45%, #050914 100%);
+      color: var(--text);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+    a { color: inherit; text-decoration: none; }
+    button { font: inherit; color: inherit; border: none; outline: none; }
+    .noise {
+      position: fixed; inset: 0; pointer-events: none; opacity: 0.08; z-index: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    }
+    .topbar {
+      position: sticky; top: 0; z-index: 50; display: flex; justify-content: space-between; align-items: center;
+      padding: 18px clamp(18px, 5vw, 72px); backdrop-filter: blur(18px);
+      background: rgba(7, 17, 31, 0.72); border-bottom: 1px solid var(--line);
+    }
+    .brand { display: flex; gap: 12px; align-items: center; font-weight: 800; letter-spacing: -.02em; }
+    .brand-mark { display: grid; place-items: center; width: 40px; height: 40px; border: 1px solid rgba(125, 211, 252, .45); border-radius: 12px; color: var(--cyan); background: rgba(125, 211, 252, .08); }
+    .nav { display: flex; gap: 22px; color: var(--muted); font-size: 14px; }
+    .nav a:hover { color: var(--text); }
+    main, footer { position: relative; z-index: 1; }
+    .hero {
+      display: grid; grid-template-columns: minmax(0, 1fr) minmax(360px, 520px); gap: 42px; align-items: center;
+      padding: clamp(56px, 9vw, 118px) clamp(18px, 5vw, 72px) 42px;
+    }
+    .eyebrow { color: var(--green); letter-spacing: .16em; text-transform: uppercase; font-size: 12px; font-weight: 800; }
+    h1, h2, h3, p { margin-top: 0; }
+    h1 { font-size: clamp(38px, 6vw, 72px); line-height: 1.1; letter-spacing: -.05em; margin-bottom: 26px; }
+    h1 span { background: linear-gradient(90deg, var(--cyan), var(--green)); -webkit-background-clip: text; color: transparent; }
+    .lead { color: #b9c7d7; line-height: 1.8; font-size: 17px; max-width: 720px; }
+    .hero-actions { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 30px; }
+    .btn { display: inline-flex; align-items: center; justify-content: center; min-height: 46px; padding: 0 18px; border-radius: 14px; border: 1px solid var(--line); font-weight: 800; cursor: pointer;}
+    .btn.primary { background: linear-gradient(135deg, #0284c7, #10b981); color: #06111e; border: none; }
+    .btn.ghost { color: var(--cyan); background: rgba(125, 211, 252, .07); }
+    .terminal { border: 1px solid var(--line); background: rgba(2, 6, 23, .74); box-shadow: var(--shadow); border-radius: 22px; overflow: hidden; }
+    .terminal-bar, .window-titlebar { display: flex; align-items: center; gap: 9px; padding: 13px 16px; border-bottom: 1px solid var(--line); background: rgba(15, 23, 42, .92); }
+    .terminal-bar span, .window-dots span { width: 11px; height: 11px; border-radius: 50%; display: inline-block; }
+    .terminal-bar span:nth-child(1), .window-dots span:nth-child(1) { background: #fb7185; }
+    .terminal-bar span:nth-child(2), .window-dots span:nth-child(2) { background: #fbbf24; }
+    .terminal-bar span:nth-child(3), .window-dots span:nth-child(3) { background: #34d399; }
+    .terminal-bar strong { margin-left: auto; color: var(--muted); font-size: 13px; }
+    .terminal pre { margin: 0; padding: 22px; overflow: auto; font-size: 14px; line-height: 1.75; color: #d5e4f6; }
+    .terminal code, code { font-family: "JetBrains Mono", "SFMono-Regular", Consolas, monospace; }
+    .muted { color: #64748b; }
+    .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; padding: 0 clamp(18px, 5vw, 72px) 76px; }
+    .stats div { padding: 26px; border: 1px solid var(--line); border-radius: 22px; background: rgba(15, 23, 42, .46); }
+    .stats strong { display: block; font-size: 34px; color: var(--cyan); }
+    .stats span { color: var(--muted); }
+    .section-heading { padding: 0 clamp(18px, 5vw, 72px) 24px; max-width: 950px; }
+    .section-heading h2 { font-size: clamp(30px, 4vw, 48px); letter-spacing: -.04em; margin-bottom: 14px; }
+    .section-heading p:not(.eyebrow) { color: var(--muted); line-height: 1.7; }
+    .desktop-section { padding: 26px 0 72px; }
+    .desktop {
+      position: relative; min-height: 700px; margin: 0 clamp(18px, 5vw, 72px); border: 1px solid var(--line); border-radius: 32px;
+      background:
+        linear-gradient(rgba(125, 211, 252, .04) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(125, 211, 252, .04) 1px, transparent 1px),
+        radial-gradient(circle at 15% 20%, rgba(96, 165, 250, .18), transparent 26rem),
+        radial-gradient(circle at 80% 85%, rgba(52, 211, 153, .12), transparent 24rem),
+        rgba(2, 6, 23, .45);
+      background-size: 36px 36px, 36px 36px, auto, auto, auto;
+      overflow: hidden; box-shadow: var(--shadow);
+    }
+    .desktop::before { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, transparent, rgba(2, 6, 23, .36)); pointer-events: none; }
+    .shortcut {
+      position: absolute; left: var(--x); top: var(--y); width: 150px; min-height: 130px; display: grid; justify-items: center; gap: 8px;
+      padding: 18px 10px; border: 1px solid rgba(148, 163, 184, .24); border-radius: 22px; background: rgba(15, 23, 42, .66);
+      box-shadow: 0 14px 42px rgba(0,0,0,.24); cursor: pointer; transition: transform .18s ease, border-color .18s ease, background .18s ease;
+    }
+    .shortcut:hover { transform: translateY(-5px); border-color: rgba(125, 211, 252, .7); background: rgba(15, 23, 42, .92); }
+    .shortcut strong { text-align: center; font-size: 14px; }
+    .shortcut small { color: var(--muted); font-size: 11px; text-align: center;}
+    .icon { width: 48px; height: 48px; border-radius: 14px; display: grid; place-items: center; font-weight: 900; font-size: 20px; color: #05111d; }
+    
+    /* Icon Colors */
+    .gimbal { background: linear-gradient(135deg, var(--cyan), var(--blue)); }
+    .store { background: linear-gradient(135deg, var(--green), #bef264); }
+    .drum { background: linear-gradient(135deg, var(--violet), var(--cyan)); }
+    .vending { background: linear-gradient(135deg, var(--orange), #fde68a); }
+    .rhythm { background: linear-gradient(135deg, #f43f5e, #fda4af); }
+    .verilog { background: linear-gradient(135deg, #10b981, #6ee7b7); }
+    .parking { background: linear-gradient(135deg, #6366f1, #a5b4fc); }
+    .cctv { background: linear-gradient(135deg, #8b5cf6, #d8b4fe); }
+    .note-icon { background: linear-gradient(135deg, #f0abfc, #93c5fd); }
+
+    .project-window {
+      position: absolute; width: min(760px, calc(100% - 28px)); min-height: 400px; max-height: 82%; display: flex; flex-direction: column;
+      border: 1px solid rgba(125, 211, 252, .34); border-radius: 22px; background: var(--panel-strong); box-shadow: var(--shadow);
+    }
+    .window-titlebar { cursor: grab; user-select: none; justify-content: space-between; }
+    .window-titlebar:active { cursor: grabbing; }
+    .window-dots { display: flex; gap: 8px; }
+    .window-title { flex: 1; text-align: center; color: #dbeafe; pointer-events: none;}
+    .window-close { display: grid; place-items: center; border: 0; background: rgba(148, 163, 184, .12); width: 32px; height: 32px; border-radius: 10px; cursor: pointer; color: var(--muted); transition: all 0.2s;}
+    .window-close:hover { background: rgba(248, 113, 113, .8); color: #fff; }
+    .window-body { padding: 24px; overflow-y: auto; flex: 1; }
+    
+    .window-hero { display: grid; grid-template-columns: 1.1fr .9fr; gap: 22px; align-items: start; }
+    .project-meta { display: flex; flex-wrap: wrap; gap: 8px; margin: 14px 0 18px; }
+    .tag { display: inline-flex; align-items: center; border: 1px solid rgba(125, 211, 252, .22); color: #bfe7ff; background: rgba(125, 211, 252, .07); border-radius: 999px; padding: 7px 10px; font-size: 12px; }
+    .window-body p, .window-body li { color: #b9c7d7; line-height: 1.75; }
+    .window-body h3 { margin-top: 22px; color: #fff; border-bottom: 1px solid var(--line); padding-bottom: 8px;}
+    .window-body ul { padding-left: 20px; }
+    .project-image { border: 1px solid var(--line); border-radius: 18px; overflow: hidden; background: rgba(2, 6, 23, .45); }
+    .project-image img { display: block; width: 100%; height: auto; object-fit: cover;}
+    .link-row { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 20px; }
+    .link-row a { padding: 9px 12px; border-radius: 12px; border: 1px solid var(--line); color: var(--cyan); background: rgba(125, 211, 252, .06); font-weight: 700; font-size: 13px; transition: all 0.2s;}
+    .link-row a:hover { background: var(--cyan); color: #000; }
+    
+    .matrix { width: 100%; border-collapse: collapse; font-size: 14px; }
+    .matrix th, .matrix td { border: 1px solid var(--line); padding: 12px; vertical-align: top; text-align: left; }
+    .matrix th { background: rgba(125, 211, 252, .08); color: #dbeafe; }
+    
+    .skills { padding: 10px 0 88px; }
+    .compact { padding-bottom: 10px; }
+    .skill-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; padding: 0 clamp(18px, 5vw, 72px); }
+    .skill-grid article { border: 1px solid var(--line); border-radius: 22px; padding: 24px; background: rgba(15, 23, 42, .54); transition: transform 0.2s;}
+    .skill-grid article:hover { transform: translateY(-3px); border-color: var(--cyan);}
+    .skill-grid h3 { color: #fff; margin-bottom: 12px; }
+    .skill-grid p { color: var(--muted); line-height: 1.7; margin-bottom: 0; font-size: 14.5px;}
+    
+    .contact { display: grid; grid-template-columns: 1fr minmax(280px, 420px); gap: 26px; margin: 0 clamp(18px, 5vw, 72px) 84px; padding: 32px; border: 1px solid var(--line); border-radius: 30px; background: rgba(15, 23, 42, .52); }
+    .contact h2 { font-size: clamp(28px, 4vw, 44px); letter-spacing: -.04em; }
+    .contact p { color: var(--muted); line-height: 1.7; }
+    .contact-card { display: grid; grid-template-columns: 90px 1fr; gap: 14px; align-content: center; padding: 24px; border: 1px solid var(--line); border-radius: 22px; background: rgba(2, 6, 23, .38); }
+    .contact-card span { color: var(--muted); }
+    footer { padding: 28px clamp(18px, 5vw, 72px); border-top: 1px solid var(--line); color: var(--muted); text-align: center;}
+    
+    @media (max-width: 980px) {
+      .hero, .contact { grid-template-columns: 1fr; }
+      .stats, .skill-grid { grid-template-columns: repeat(2, 1fr); }
+      .window-hero { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 680px) {
+      .nav { display: none; }
+      .stats, .skill-grid { grid-template-columns: 1fr; }
+      .desktop { min-height: 820px; }
+      .shortcut { position: relative; left: auto !important; top: auto !important; margin: 16px; width: calc(100% - 32px); min-height: 80px; display: flex; flex-direction: row; align-items: center; justify-items: start; padding: 10px 20px;}
+      .shortcut .icon { margin-right: 15px;}
+      .shortcut small { display: none;}
+      .project-window { position: fixed; left: 14px !important; top: 80px !important; width: calc(100% - 28px); max-height: calc(100vh - 100px); }
+    }
+  </style>
+</head>
+<body>
+  <div class="noise" aria-hidden="true"></div>
+  <header class="topbar">
+    <a class="brand" href="#home" aria-label="Portfolio home">
+      <span class="brand-mark">&lt;/&gt;</span>
+      <span>Embedded.Portfolio</span>
+    </a>
+    <nav class="nav" aria-label="주요 메뉴">
+      <a href="#about">About</a>
+      <a href="#desktop">Projects</a>
+      <a href="#skills">Stack</a>
+      <a href="#contact">Contact</a>
+    </nav>
+  </header>
+
+  <main id="home">
+    <section class="hero" id="about">
+      <div class="hero-copy">
+        <p class="eyebrow">C/C++ · MCU · Edge/Cloud · OSEK/RTOS</p>
+        <h1>데이터를 검증하고<br />로직을 최적화하는<br /><span>임베디드 엔지니어</span></h1>
+        <p class="lead">
+          하드웨어 레벨의 타이밍 분석부터 클라우드 데이터 파이프라인까지 전체 시스템의 흐름을 이해합니다.
+          문제가 생겼을 때 데이터를 수집하여 수식으로 검증하고, RTOS 자원 충돌과 우선순위를 튜닝하여 
+          끝까지 동작하게 만드는 과정을 즐깁니다.
+        </p>
+        <div class="hero-actions">
+          <a class="btn primary" href="#desktop">프로젝트 열기</a>
+          <a class="btn ghost" href="https://github.com/jmGim" target="_blank" rel="noreferrer">GitHub 보기</a>
+        </div>
+      </div>
+
+      <aside class="terminal" aria-label="개발자 소개 터미널">
+        <div class="terminal-bar"><span></span><span></span><span></span><strong>profile.sh</strong></div>
+        <pre><code><span class="muted">$</span> whoami
+Data-driven Embedded Developer
+
+<span class="muted">$</span> focus --areas
+- MCU firmware / FreeRTOS / OSEK
+- Sensor fusion / CAN / Timing Analysis
+- Edge to Cloud (Node-RED, MQTT)
+- Verilog / H/W Logic Control
+
+<span class="muted">$</span> value
+"데이터로 분석하고, 수식으로 검증한다."</code></pre>
+      </aside>
+    </section>
+
+    <section class="stats" aria-label="포트폴리오 요약">
+      <div><strong>8</strong><span>프로젝트 경험</span></div>
+      <div><strong>MCU</strong><span>STM32, ESP32, Arduino</span></div>
+      <div><strong>Edge</strong><span>RPi, Jetson Nano, AWS</span></div>
+      <div><strong>RTOS</strong><span>FreeRTOS, OSEK</span></div>
+    </section>
+
+    <section class="desktop-section" id="desktop">
+      <div class="section-heading">
+        <p class="eyebrow">Project Desktop</p>
+        <h2>프로젝트를 윈도우 창처럼 열어보세요</h2>
+        <p>아이콘을 클릭하면 상세 창이 열립니다. 창은 드래그할 수 있고 여러 개를 동시에 비교할 수 있습니다.</p>
+      </div>
+
+      <div class="desktop" aria-label="프로젝트 데스크톱">
+        <div class="desktop-grid"></div>
+        
+        <!-- 8 Projects Shortcuts -->
+        <button class="shortcut" data-project="gimbal" style="--x: 5%; --y: 5%">
+          <span class="icon gimbal">G</span><strong>STM32 Gimbal</strong><small>3축 객체 추적 & RTOS</small>
+        </button>
+        <button class="shortcut" data-project="vending" style="--x: 25%; --y: 5%">
+          <span class="icon vending">V</span><strong>Smart Vending</strong><small>IoT 자판기 & 대시보드</small>
+        </button>
+        <button class="shortcut" data-project="store" style="--x: 45%; --y: 5%">
+          <span class="icon store">S</span><strong>Store Management</strong><small>Edge Cloud & Node-RED</small>
+        </button>
+        <button class="shortcut" data-project="verilog" style="--x: 65%; --y: 5%">
+          <span class="icon verilog">C</span><strong>Verilog 공조기</strong><small>타이밍 분석 & H/W 로직</small>
+        </button>
+        
+        <button class="shortcut" data-project="airdrum" style="--x: 5%; --y: 40%">
+          <span class="icon drum">D</span><strong>Air Drum</strong><small>IMU 제스처 & MQTT</small>
+        </button>
+        <button class="shortcut" data-project="rhythm" style="--x: 25%; --y: 40%">
+          <span class="icon rhythm">R</span><strong>SDL2 Rhythm Game</strong><small>푸리에 이론 & C</small>
+        </button>
+        <button class="shortcut" data-project="parking" style="--x: 45%; --y: 40%">
+          <span class="icon parking">P</span><strong>자율주차 시스템</strong><small>모터 제어 & 다항식 검증</small>
+        </button>
+        <button class="shortcut" data-project="cctv" style="--x: 65%; --y: 40%">
+          <span class="icon cctv">C</span><strong>스마트 CCTV</strong><small>크로스 컴파일 & 스트리밍</small>
+        </button>
+        
+        <button class="shortcut note" data-project="all" style="--x: 80%; --y: 70%">
+          <span class="icon note-icon">★</span><strong>Project Matrix</strong><small>전체 요약 비교</small>
+        </button>
+      </div>
+    </section>
+
+    <section class="skills" id="skills">
+      <div class="section-heading compact">
+        <p class="eyebrow">Core Stack</p>
+        <h2>문제 해결 중심의 기술 스택</h2>
+      </div>
+      <div class="skill-grid">
+        <article>
+          <h3>MCU / RTOS</h3>
+          <p>STM32F411, Arduino, ESP32, FreeRTOS, OSEK. Task 우선순위 및 Stack Size 튜닝, Mutex/Semaphore 활용 동기화 처리.</p>
+        </article>
+        <article>
+          <h3>H/W & Communication</h3>
+          <p>Verilog (타이밍 다이어그램 분석), CAN(FD) 매핑 개념, UART, SPI, I2C, MPU6050, HMC5883L 센서 제어.</p>
+        </article>
+        <article>
+          <h3>Edge / Cloud</h3>
+          <p>Raspberry Pi, TCP/IP Socket, MQTT, Node-RED, MariaDB, PHP Dashboard, Grafana 통합 파이프라인 구축.</p>
+        </article>
+        <article>
+          <h3>Algorithm & Control</h3>
+          <p>PID 제어, Low Pass Filter, 칼만 필터, 푸리에 이론(주파수 분석), 다항식 커브 피팅을 이용한 오차 보정.</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="contact" id="contact">
+      <div>
+        <p class="eyebrow">Contact</p>
+        <h2>현실의 제약을 데이터와 로직으로 극복합니다.</h2>
+        <p>단순히 라이브러리를 가져다 쓰는 것을 넘어, 왜 안되는지 파악하고 밑바닥부터 튜닝할 수 있는 개발자입니다.</p>
+      </div>
+      <div class="contact-card">
+        <span>GitHub</span><strong>github.com/jmGim</strong>
+        <span>Email</span><strong>your.email@example.com</strong>
+      </div>
+    </section>
+  </main>
+
+  <template id="project-window-template">
+    <section class="project-window" role="dialog" aria-modal="false">
+      <div class="window-titlebar">
+        <div class="window-dots"><span></span><span></span><span></span></div>
+        <strong class="window-title"></strong>
+        <button class="window-close" aria-label="창 닫기">×</button>
+      </div>
+      <div class="window-body"></div>
+    </section>
+  </template>
+
+  <footer>
+    <p>© 2026 Embedded IoT Portfolio. Built as a static site.</p>
+  </footer>
+
+  <script>
+    // 8 Projects Data
+    const projects = {
+      gimbal: {
+        title: "STM32 3축 스마트 짐벌",
+        subtitle: "멀티 MCU 기반 객체 추적 및 RTOS 안정화 시스템",
+        image: "https://images.unsplash.com/photo-1518770660439-4636190af475?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80",
+        tags: ["STM32F411", "ESP32-CAM", "FreeRTOS", "MPU6050", "PID", "SPI/UART"],
+        summary: "영상 처리(ESP32)와 자세 제어(STM32)를 분리하여 병목을 해결한 3축 짐벌입니다. H/W 인터페이스 설계부터 RTOS 기반 멀티 태스킹 최적화까지 구현했습니다.",
+        role: [
+          "RGB565/HSV 변환 및 RLE 알고리즘 적용으로 영상 처리 실시간성 확보",
+          "MPU6050, HMC5883L 센서 융합 및 칼만 필터, LPF, PID 제어로 서보모터 진동 억제",
+          "FreeRTOS 도입: Task 우선순위 및 Mutex/Semaphore 타이밍 조절을 통한 교착상태 해결"
+        ],
+        architecture: ["ESP32-CAM Vision Edge", "STM32 Router & Display", "STM32 Stabilizer", "SG90 3축 서보모터"],
+        troubleshooting: [
+          "[해결] UART 통신 병목을 고속 SPI 핑퐁버퍼(DMA)로 전환해 Tearing 방지",
+          "[해결] RTOS 환경에서 센서 데이터 로깅 시 CLI 화면 멈춤 및 각도 값 출력 오류를 Semaphore 동기화 튜닝으로 해결"
+        ],
+        links: [["GitHub", "https://github.com/KCCI-Ottogi/Jimbal_IMU_STM32F411"]]
+      },
+      vending: {
+        title: "Smart IoT 자판기",
+        subtitle: "단말기-서버-창고 간 실시간 재고 관리 대시보드",
+        tags: ["STM32", "Raspberry Pi", "MariaDB", "PHP", "Step Motor", "TCP/IP"],
+        summary: "다중 자판기 단말에서 발생하는 판매 및 센서 데이터를 중앙 서버로 수집하고, 재고 부족 시 STM32 기반 스마트 창고에서 스텝모터로 물리적 리필을 수행하는 통합 시스템입니다.",
+        role: [
+          "자판기 단말(Arduino) 2대 동시 운영 및 센서/모터 제어 로직 구현",
+          "Raspberry Pi C 소켓 서버 구축 및 MariaDB 연동 데이터베이스 설계",
+          "Query를 활용한 PHP Dashboard 시각화 (온습도, 판매량 모니터링)",
+          "STM32 스텝모터 제어를 통한 자동 재고 보충(RESTOCK) 로직 구현"
+        ],
+        architecture: ["Arduino Vending Machine 1 & 2", "RPi Socket Server + DB", "PHP Web Dashboard", "STM32 Stock Manager"],
+        troubleshooting: [
+          "[개선] AI 및 센서 이벤트가 동시다발적으로 발생할 때 통신 충돌 방지를 위한 프로토콜 정의",
+          "[최적화] 다중 기기 통신 시 Database Query 부하 감소를 위한 트랜잭션 관리"
+        ],
+        links: [["GitHub Org", "https://github.com/orgs/IoT-Vending-Machine/repositories"]]
+      },
+      verilog: {
+        title: "Verilog 스마트 공조기",
+        subtitle: "H/W 레벨의 40-byte 타이밍 분석 및 로직 제어",
+        tags: ["Verilog", "DHT11", "DC Motor", "Timing Analysis", "FPGA"],
+        summary: "FPGA 환경에서 Verilog를 이용해 온도/습도 센서(DHT11)의 40-byte 신호를 나노초 단위로 직접 분석하고 파싱하여 DC 모터를 구동하는 순수 하드웨어 제어 프로젝트입니다.",
+        role: [
+          "마이크로초 단위의 타이밍 다이어그램 분석을 통한 DHT11 센서 프로토콜 파싱 로직 설계",
+          "측정된 온습도 값에 따른 DC 모터 PWM 제어기 Verilog 구현",
+          "디지털 논리회로 기반의 신호 무결성 확보 및 디바운싱 처리"
+        ],
+        architecture: ["Verilog HDL", "DHT11 Sensor Interface", "PWM Controller", "DC Motor Driver"],
+        troubleshooting: [
+          "[해결] CAN 통신 분석과 유사한 저수준 데이터 스트림(40-byte) 타이밍 엇갈림 현상 해결",
+          "[해결] 클럭 분주(Clock Divider)를 세밀하게 조정하여 센서 응답 신호와 래치 타이밍 동기화"
+        ],
+        links: [["GitHub", "https://github.com/jmGim/Verilog_2026/tree/main/18.smart_air_conditioner"]]
+      },
+      store: {
+        title: "매장관리 시스템 (Edge Cloud)",
+        subtitle: "Node-RED 기반 Edge-Cloud IoT 게이트웨이 연동",
+        tags: ["Node-RED", "IBM Gateway", "Arduino", "Dashboard", "IoT Edge"],
+        summary: "로컬 매장의 센서 데이터를 수집하는 엣지 디바이스와 중앙 클라우드를 연동하여, 실시간 매장 상태 모니터링 및 원격 제어를 가능하게 한 클라우드 인프라 연동 프로젝트입니다.",
+        role: [
+          "SG90, DHT11, HC06 등 아두이노 기반 로컬 센서/액추에이터 노드 구축",
+          "IBM Gateway를 거쳐 Edge Cloud 및 Main Cloud로 향하는 데이터 파이프라인 구성",
+          "Node-RED를 활용한 데이터 플로우 설계 및 대시보드 UI 구현"
+        ],
+        architecture: ["Arduino Sensor Node", "IBM Gateway", "Node-RED Edge", "Cloud Dashboard"],
+        troubleshooting: [
+          "[해결] 엣지-클라우드 간 네트워크 단절 시 센서 데이터 유실을 막기 위한 버퍼링/재전송 고민",
+          "[최적화] 서보모터와 부저 동시 구동 시 발생하는 전원 및 타이머 충돌 회피 설계"
+        ],
+        links: [["GitHub", "https://github.com/settings/organizations"]]
+      },
+      rhythm: {
+        title: "SDL2 Rhythm Game",
+        subtitle: "푸리에 이론(주파수 분석)을 활용한 음정 판정 게임",
+        tags: ["C", "SDL2", "Fourier Transform", "AI 연계개발"],
+        summary: "C언어와 SDL2 라이브러리를 활용한 리듬 게임으로, 마이크 입력 신호를 푸리에 변환(FFT)하여 사용자의 음정을 실시간으로 판정하는 알고리즘을 적용했습니다.",
+        role: [
+          "사용자 오디오 입력 처리 및 푸리에 이론 기반 실시간 주파수 분석(Pitch Detection)",
+          "Gemini 등 AI 툴을 95% 이상 활용하여 수학적 알고리즘과 C 코드 간극 축소 및 최적화",
+          "SDL2 기반 렌더링 및 게임 루프(Frame-rate) 동기화"
+        ],
+        architecture: ["C Language", "SDL2 Graphics/Audio", "FFT Algorithm Layer"],
+        troubleshooting: [
+          "[개선] AI가 생성한 수학적 코드를 실제 메모리와 게임 루프에 맞게 리팩토링 및 튜닝",
+          "[해결] 마이크 버퍼 크기 조절을 통해 주파수 판정의 딜레이(Latency) 최소화"
+        ],
+        links: [["GitHub", "https://github.com/jmGim/Rhythm_Game_C"]]
+      },
+      airdrum: {
+        title: "IoT Air Drum",
+        subtitle: "MPU6050 제스처 매핑 및 AWS 클라우드 연동",
+        tags: ["ESP8266", "MPU6050", "AWS", "MQTT", "Python"],
+        summary: "가속도/자이로 센서가 부착된 스틱의 움직임을 분석하여 클라우드 서버(AWS)를 거쳐 드럼 사운드를 재생하는 IoT 체감형 악기입니다.",
+        role: [
+          "전체 시스템 아키텍처 설계 및 MPU6050 Wire.h 기반 I2C 제어",
+          "드럼 스틱 모션(가속도 임계값) 판별 및 MQTT Publish 프로토콜 구현",
+          "AWS 서버 라우팅 및 지연 시간(Latency) 최소화를 위한 박자 매핑 튜닝"
+        ],
+        architecture: ["ESP8266 Node", "AWS MQTT Broker", "Python Sound Engine"],
+        troubleshooting: [
+          "[해결] 네트워크 지연으로 인한 사운드 싱크(박자) 어긋남 현상을 버퍼 튜닝으로 완화",
+          "[개선] 센서 초기 캘리브레이션을 통해 동작 인식률 대폭 향상"
+        ],
+        links: [["GitHub", "https://github.com/iotlab101-team3/board_A"]]
+      },
+      parking: {
+        title: "데이터 기반 자율주차 시스템",
+        subtitle: "다항식 피팅(Curve Fitting)을 이용한 모터 제어 오차 검증",
+        tags: ["RC Car", "Data Verification", "Polynomial Fitting", "Motor Control"],
+        summary: "테스트 도구가 없는 환경에서, 수십 번의 주행 데이터를 직접 엑셀로 기록하고 분석하여 주차 모터 제어의 물리적 오차를 수학적으로 보정한 실증 프로젝트입니다.",
+        role: [
+          "RC카 기반 플랫폼 커스터마이징 및 비어있는 주차 공간 탐색 알고리즘 개발",
+          "모터 구동 시간 대비 실제 이동 거리 데이터를 측정하여 엑셀 다항식(Polynomial) 도출",
+          "도출된 수식을 모터 제어 코드에 반영하여 타이어 슬립 및 바퀴 크기 오차 보정"
+        ],
+        architecture: ["MCU Controller", "Motor Driver", "Distance Sensor", "Data Analysis Model"],
+        troubleshooting: [
+          "[강점] QA 테스트 경험 부재를 '데이터 기반 수식 도출 및 자체 검증' 능력으로 극복",
+          "[해결] 배터리 전압 강하에 따른 모터 속도 저하 문제를 수식 가중치로 보완"
+        ],
+        links: [["GitHub", "로컬 프로젝트 (Repository 비공개)"]]
+      },
+      cctv: {
+        title: "스마트 CCTV 모니터링",
+        subtitle: "라즈베리파이 크로스 컴파일 및 영상 스트리밍",
+        tags: ["Raspberry Pi", "Cross Compile", "MPEG-2", "Linux"],
+        summary: "라즈베리파이 환경에서 타겟 보드용 크로스 컴파일(scp, nfs)을 수행하고, 카메라 각도 제어용 듀얼 모터와 MPEG-2 영상 스트리밍을 연동하려 한 리눅스 기반 프로젝트입니다.",
+        role: [
+          "Ubuntu 호스트 환경에서 Raspberry Pi용 크로스 컴파일 체인(Toolchain) 구축 및 배포",
+          "MPEG-2 스트리밍 기술을 적용하여 실시간 영상 송출 파이프라인 구성",
+          "2축(Pan/Tilt) 카메라 구동을 위한 모터 제어 로직 설계"
+        ],
+        architecture: ["Host(Ubuntu)", "Target(Raspberry Pi)", "MPEG-2 Streamer", "Pan/Tilt Motor"],
+        troubleshooting: [
+          "[배움] 동시 모터 제어 시 발생한 타이머 자원 충돌(실패 경험)을 통해 H/W 타이머 구조의 중요성 학습",
+          "[성과] 영상 스트리밍(MPEG)은 정상 구동하여 네트워크 기반 미디어 전송 이해도 향상"
+        ],
+        links: [["GitHub", "로컬 프로젝트 (Repository 비공개)"]]
+      }
+    };
+
+    let topZ = 10;
+    const desktop = document.querySelector(".desktop");
+    const template = document.querySelector("#project-window-template");
+
+    function renderProject(project) {
+      const image = project.image ? `<div class="project-image"><img src="${project.image}" alt="${project.title} 대표 이미지"></div>` : `<div class="project-image placeholder"><div style="padding:44px;text-align:center;color:#91a3b8;">${project.title}<br><small>System diagram ready</small></div></div>`;
+      return `
+        <div class="window-hero">
+          <div>
+            <p class="eyebrow">${project.subtitle}</p>
+            <h2>${project.title}</h2>
+            <div class="project-meta">${project.tags.map(tag => `<span class="tag">${tag}</span>`).join("")}</div>
+            <p>${project.summary}</p>
+          </div>
+          ${image}
+        </div>
+        <h3>담당 역할 / 구현 포인트</h3>
+        <ul>${project.role.map(item => `<li>${item}</li>`).join("")}</ul>
+        <h3>시스템 구성</h3>
+        <ul>${project.architecture.map(item => `<li>${item}</li>`).join("")}</ul>
+        <h3>트러블슈팅 / 오차 검증 경험</h3>
+        <ul>${project.troubleshooting.map(item => `<li>${item}</li>`).join("")}</ul>
+        <div class="link-row">${project.links.map(([label, url]) => `<a href="${url}" target="_blank" rel="noreferrer">${label} ↗</a>`).join("")}</div>
+      `;
+    }
+
+    function renderMatrix() {
+      const rows = Object.values(projects).map(p => `
+        <tr>
+          <td><strong>${p.title}</strong><br><span style="color:#91a3b8">${p.subtitle}</span></td>
+          <td>${p.tags.slice(0, 4).map(t => `<span class="tag">${t}</span>`).join(" ")}</td>
+          <td>${p.role[0]}</td>
+          <td>${p.troubleshooting[0]}</td>
+        </tr>`).join("");
+      return `
+        <p class="eyebrow">All 8 Projects Overview</p>
+        <h2>Project Matrix</h2>
+        <table class="matrix">
+          <thead><tr><th>프로젝트</th><th>핵심 스택</th><th>주요 역할</th><th>대표 문제해결/검증</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>`;
+    }
+
+    function openWindow(key) {
+      const win = template.content.firstElementChild.cloneNode(true);
+      const title = key === "all" ? "Project Matrix" : projects[key].title;
+      win.querySelector(".window-title").textContent = title;
+      win.querySelector(".window-body").innerHTML = key === "all" ? renderMatrix() : renderProject(projects[key]);
+      
+      // Calculate random offset to avoid exact overlapping
+      const offsetLeft = Math.min(70 + Math.random() * 140, desktop.clientWidth - 780);
+      const offsetTop = Math.min(50 + Math.random() * 80, desktop.clientHeight - 500);
+      
+      win.style.left = `${offsetLeft}px`;
+      win.style.top = `${offsetTop}px`;
+      win.style.zIndex = ++topZ;
+      
+      desktop.appendChild(win);
+      makeDraggable(win);
+      
+      // Fix: Close button logic
+      win.querySelector(".window-close").addEventListener("click", (e) => {
+        win.remove();
+      });
+      
+      win.addEventListener("pointerdown", () => win.style.zIndex = ++topZ);
+    }
+
+    function makeDraggable(win) {
+      const bar = win.querySelector(".window-titlebar");
+      let startX, startY, startLeft, startTop, dragging = false;
+      
+      bar.addEventListener("pointerdown", e => {
+        // [버그 픽스]: 닫기 버튼 영역 클릭 시 드래그 이벤트 무시 (버튼 클릭 이벤트 보장)
+        if (e.target.closest('.window-close')) return;
+        
+        dragging = true;
+        bar.setPointerCapture(e.pointerId);
+        startX = e.clientX; startY = e.clientY;
+        startLeft = parseFloat(win.style.left || 0);
+        startTop = parseFloat(win.style.top || 0);
+      });
+      
+      bar.addEventListener("pointermove", e => {
+        if (!dragging) return;
+        const nextLeft = startLeft + e.clientX - startX;
+        const nextTop = startTop + e.clientY - startY;
+        win.style.left = `${Math.max(10, Math.min(nextLeft, desktop.clientWidth - win.offsetWidth - 10))}px`;
+        win.style.top = `${Math.max(10, Math.min(nextTop, desktop.clientHeight - 80))}px`;
+      });
+      
+      bar.addEventListener("pointerup", e => { 
+        if(dragging){
+            dragging = false; 
+            bar.releasePointerCapture(e.pointerId); 
+        }
+      });
+    }
+
+    document.querySelectorAll(".shortcut").forEach(btn => {
+      btn.addEventListener("click", () => openWindow(btn.dataset.project));
+    });
+
+    document.addEventListener("keydown", e => {
+      if (e.key === "Escape") {
+        const wins = [...document.querySelectorAll(".project-window")];
+        wins.sort((a, b) => (+b.style.zIndex || 0) - (+a.style.zIndex || 0));
+        wins[0]?.remove();
+      }
+    });
+
+    // 화면 진입 시 데모용으로 첫 프로젝트 오픈
+    window.addEventListener("load", () => {
+      if (window.innerWidth > 900) setTimeout(() => openWindow("gimbal"), 450);
+    });
+  </script>
+</body>
+</html>
