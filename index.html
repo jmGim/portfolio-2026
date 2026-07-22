@@ -474,6 +474,27 @@
       line-height: 1.65
     }
 
+    /* 프로젝트 카드 내 스택 태그 (클릭 전에도 보임) */
+    .project-card-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+      margin-top: 10px;
+    }
+
+    .project-card-tags .tag-mini {
+      display: inline-flex;
+      align-items: center;
+      padding: 3px 7px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 600;
+      background: rgba(14, 165, 233, .06);
+      color: var(--cyan);
+      border: 1px solid rgba(14, 165, 233, .12);
+      line-height: 1.4;
+    }
+
     /* Card number gradient colors */
     .num-1 {
       background: linear-gradient(135deg, var(--cyan), var(--blue))
@@ -943,6 +964,7 @@
       <a href="#about">About</a>
       <a href="#projects">Projects</a>
       <a href="#skills">Stack</a>
+      <a href="blog.html">📝 Tech Blog</a>
       <a href="#contact">Contact</a>
     </nav>
   </header>
@@ -966,16 +988,23 @@
       <aside class="terminal" aria-label="개발자 소개 터미널">
         <div class="terminal-bar"><span></span><span></span><span></span><strong>profile.sh</strong></div>
         <pre><code><span class="t-muted">$</span> whoami
-Data-driven Embedded Developer
+Data-driven Embedded SW Engineer
+→ 직감이 아닌 데이터시트와 오실로스코프로 검증하는 개발자
 
 <span class="t-muted">$</span> focus --areas
-- MCU firmware / FreeRTOS / OSEK
-- Sensor fusion / CAN / Timing Analysis
-- Edge to Cloud (Node-RED, MQTT)
-- Verilog / H/W Logic Control
+- MCU Firmware (STM32, ESP32) / FreeRTOS / OSEK
+- Sensor Fusion / CAN / Timing Analysis
+- Edge to Cloud (Node-RED, MQTT, AWS)
+- Verilog H/W Logic / OTA Bootloader
 
 <span class="t-muted">$</span> value
-"데이터로 분석하고, 수식으로 검증한다."</code></pre>
+"데이터로 분석하고, 수식으로 검증한다."
+
+<span class="t-muted">$</span> principle --reliability
+- 매 커밋마다 빌드 검증, CRC32 무결성 체크
+- RTOS 환경에서 Mutex/Semaphore 기반 경합 방지
+- Flash 파티셔닝 + 이중 검증으로 OTA 신뢰성 확보
+- 코드 리뷰 · 정적 분석으로 <span style="color:#34d399">소프트웨어 신뢰성</span> 보장</code></pre>
       </aside>
     </div>
   </section>
@@ -985,7 +1014,7 @@ Data-driven Embedded Developer
 
     <!-- Stats -->
     <section class="stats-section reveal" aria-label="포트폴리오 요약">
-      <div class="stat-card"><strong>8</strong><span>프로젝트 경험</span></div>
+      <div class="stat-card"><strong id="project-count">0</strong><span>프로젝트 경험</span></div>
       <div class="stat-card"><strong>MCU</strong><span>STM32, ESP32, Arduino</span></div>
       <div class="stat-card"><strong>Edge</strong><span>RPi, Jetson Nano, AWS</span></div>
       <div class="stat-card"><strong>RTOS</strong><span>FreeRTOS, OSEK</span></div>
@@ -1231,8 +1260,22 @@ Data-driven Embedded Developer
       }
     };
 
-    /* 이미지 번호 순서대로 표시 */
-    const projectOrder = ['gimbal', 'rhythm', 'verilog', 'airdrum', 'vending', 'store', 'parking', 'cctv'];
+    /* 프로젝트 표시 순서 — 8번 CCTV 주석처리 */
+    const projectOrder = [
+      'gimbal',   // 1. STM32 3축 스마트 짐벌
+      'parking',  // 2. 데이터 기반 자율주차 시스템
+      'verilog',  // 3. Verilog 스마트 공조기
+      'vending',  // 4. Smart IoT 자판기
+      'airdrum',  // 5. IoT Air Drum
+      'store',    // 6. 매장관리 시스템 (Edge Cloud)
+      'rhythm',   // 7. SDL2 Rhythm Game
+      // 'cctv',  // 8. 스마트 CCTV 모니터링 — 비공개 처리
+    ];
+
+    /* ==============================================
+       프로젝트 경험 숫자 자동 카운트
+    =============================================== */
+    document.getElementById('project-count').textContent = projectOrder.length;
 
     /* ==============================================
        PROJECT CARD GRID 생성
@@ -1240,6 +1283,7 @@ Data-driven Embedded Developer
     const gridEl = document.getElementById('project-grid');
     projectOrder.forEach((key, idx) => {
       const p = projects[key];
+      const displayNum = idx + 1; // 자동 번호 부여
       const card = document.createElement('div');
       card.className = 'project-card reveal-stagger';
       card.style.transitionDelay = `${idx * 0.08}s`;
@@ -1250,9 +1294,10 @@ Data-driven Embedded Developer
       card.innerHTML = `
         <img class="project-card-img" src="${p.image}" alt="${p.title}" loading="lazy">
         <div class="project-card-body">
-          <div class="project-card-num num-${p.num}">${p.num}</div>
+          <div class="project-card-num num-${((idx % 8) + 1)}">${displayNum}</div>
           <div class="project-card-title">${p.title}</div>
           <div class="project-card-brief">${p.brief}</div>
+          <div class="project-card-tags">${p.tags.slice(0, 4).map(t => `<span class="tag-mini">${t}</span>`).join('')}</div>
         </div>
       `;
       card.addEventListener('click', () => openModal(key));
@@ -1311,15 +1356,18 @@ Data-driven Embedded Developer
     }
 
     function renderMatrix() {
-      const rows = Object.values(projects).map(p => `
+      const rows = projectOrder.map(key => {
+        const p = projects[key];
+        return `
         <tr>
           <td><strong>${p.title}</strong><br><small style="color:var(--muted)">${p.subtitle}</small></td>
           <td>${p.tags.slice(0, 4).map(t => `<span class="tag">${t}</span>`).join(' ')}</td>
           <td>${p.role[0]}</td>
           <td>${formatTS(p.troubleshooting[0])}</td>
-        </tr>`).join('');
+        </tr>`;
+      }).join('');
       return `
-        <p class="eyebrow">All 8 Projects Overview</p>
+        <p class="eyebrow">All ${projectOrder.length} Projects Overview</p>
         <h2>Project Matrix</h2>
         <table class="matrix">
           <thead><tr><th>프로젝트</th><th>핵심 스택</th><th>주요 역할</th><th>대표 문제해결</th></tr></thead>

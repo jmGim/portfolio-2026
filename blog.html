@@ -1,0 +1,583 @@
+<!doctype html>
+<html lang="ko">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Dev.Embedded — 임베디드 기술 블로그</title>
+  <meta name="description" content="하드웨어 밑바닥부터 OS 아키텍처까지, 데이터시트와 오실로스코프로 검증하는 임베디드 SW 엔지니어링 기록" />
+  <link rel="icon" type="image/svg+xml"
+    href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'%3E%3Crect width='48' height='48' rx='12' fill='%230ea5e9'/%3E%3Ctext x='24' y='32' text-anchor='middle' font-family='system-ui' font-weight='800' font-size='14' fill='%23fff'%3E%3E_%3C/text%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+  <link rel="stylesheet"
+    href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap">
+
+  <style>
+    :root {
+      --bg: #0F1117;
+      --bg-card: #1A1D24;
+      --bg-input: #1A1D24;
+      --border: #2A2D35;
+      --border-hover: #3A3D45;
+      --text: #E2E8F0;
+      --text-s: #94A3B8;
+      --text-muted: #64748B;
+      --cyan: #0ea5e9;
+      --blue: #3b82f6;
+      --green: #10b981;
+      --purple: #8b5cf6;
+      --yellow: #eab308;
+      --orange: #f97316;
+      --red: #ef4444;
+      font-family: "Pretendard", system-ui, sans-serif;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0 }
+    html { scroll-behavior: smooth }
+    body { background: var(--bg); color: var(--text); min-height: 100vh; -webkit-font-smoothing: antialiased }
+    a { color: inherit; text-decoration: none }
+    button { font: inherit; color: inherit; border: none; outline: none; cursor: pointer; background: none }
+
+    /* Navbar */
+    .navbar {
+      position: sticky; top: 0; z-index: 50;
+      border-bottom: 1px solid var(--border);
+      background: rgba(15,17,23,.85);
+      backdrop-filter: blur(16px);
+    }
+    .navbar-inner {
+      max-width: 1200px; margin: 0 auto; padding: 0 24px;
+      height: 64px; display: flex; align-items: center; justify-content: space-between;
+    }
+    .navbar-brand {
+      display: flex; align-items: center; gap: 8px;
+      font-weight: 800; font-size: 18px; color: #fff; cursor: pointer;
+    }
+    .navbar-brand .icon { color: var(--cyan); font-size: 22px }
+    .navbar-brand .accent { color: var(--cyan) }
+    .navbar-links { display: flex; gap: 24px; font-size: 14px; font-weight: 500 }
+    .navbar-links a { color: var(--text-s); transition: color .2s }
+    .navbar-links a:hover { color: #fff }
+    .navbar-links a.active { color: var(--cyan) }
+
+    /* Hero */
+    .hero { max-width: 1200px; margin: 0 auto; padding: 64px 24px 48px }
+    .hero h1 { font-size: clamp(32px, 5vw, 48px); font-weight: 800; color: #fff; line-height: 1.2; margin-bottom: 16px }
+    .hero h1 .gradient { background: linear-gradient(135deg, var(--cyan), #67e8f9); -webkit-background-clip: text; color: transparent }
+    .hero p { color: var(--text-muted); font-size: 16px; line-height: 1.7; max-width: 680px; margin-bottom: 32px }
+
+    /* Search */
+    .search-wrap { position: relative; max-width: 520px }
+    .search-wrap input {
+      width: 100%; background: var(--bg-input); border: 1px solid var(--border);
+      border-radius: 999px; padding: 14px 20px 14px 48px;
+      font-size: 14px; color: #fff; transition: border-color .2s;
+    }
+    .search-wrap input:focus { border-color: var(--cyan); outline: none; box-shadow: 0 0 0 3px rgba(14,165,233,.15) }
+    .search-wrap input::placeholder { color: var(--text-muted) }
+    .search-wrap .search-icon { position: absolute; left: 18px; top: 50%; transform: translateY(-50%); color: var(--text-muted); font-size: 18px }
+
+    /* Main Layout */
+    .main { max-width: 1200px; margin: 0 auto; padding: 0 24px 80px; display: grid; grid-template-columns: 220px 1fr; gap: 48px }
+
+    /* Sidebar */
+    .sidebar { position: sticky; top: 88px; align-self: start }
+    .sidebar h3 { font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: .12em; margin-bottom: 12px; padding: 0 12px }
+    .sidebar ul { list-style: none; padding: 0 }
+    .cat-btn {
+      display: flex; align-items: center; gap: 8px; width: 100%;
+      padding: 10px 14px; border-radius: 10px; font-size: 14px; font-weight: 500;
+      color: var(--text-s); transition: all .2s; text-align: left;
+    }
+    .cat-btn:hover { background: var(--bg-card); color: #fff }
+    .cat-btn.active { background: rgba(14,165,233,.1); color: var(--cyan) }
+    .cat-btn .cat-icon { font-size: 16px; width: 20px; text-align: center }
+
+    /* Tab Navigation */
+    .tab-nav { display: flex; gap: 4px; margin-bottom: 24px; background: var(--bg-card); border-radius: 12px; padding: 4px; border: 1px solid var(--border) }
+    .tab-btn {
+      padding: 10px 20px; border-radius: 10px; font-size: 13px; font-weight: 600;
+      color: var(--text-s); transition: all .2s;
+    }
+    .tab-btn:hover { color: #fff }
+    .tab-btn.active { background: var(--cyan); color: #fff }
+
+    /* Feed Header */
+    .feed-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px }
+    .feed-header h2 { font-size: 20px; font-weight: 800; color: #fff }
+    .feed-header span { font-size: 13px; color: var(--text-muted) }
+
+    /* Post Card */
+    .post-card {
+      background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px;
+      padding: 28px 32px; margin-bottom: 16px; cursor: pointer;
+      transition: border-color .25s, transform .25s;
+    }
+    .post-card:hover { border-color: var(--border-hover); transform: translateY(-2px) }
+    .post-meta { display: flex; align-items: center; gap: 12px; font-size: 12px; font-weight: 600; margin-bottom: 14px; flex-wrap: wrap }
+    .level-badge {
+      padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: 700;
+    }
+    .level-expert { background: rgba(139,92,246,.12); color: var(--purple); border: 1px solid rgba(139,92,246,.2) }
+    .level-advanced { background: rgba(14,165,233,.12); color: var(--cyan); border: 1px solid rgba(14,165,233,.2) }
+    .level-intermediate { background: rgba(16,185,129,.12); color: var(--green); border: 1px solid rgba(16,185,129,.2) }
+    .level-beginner { background: rgba(234,179,8,.12); color: var(--yellow); border: 1px solid rgba(234,179,8,.2) }
+    .post-meta .meta-text { color: var(--text-muted); display: flex; align-items: center; gap: 4px }
+    .post-title { font-size: 22px; font-weight: 800; color: #fff; margin-bottom: 10px; line-height: 1.35; transition: color .2s }
+    .post-card:hover .post-title { color: var(--cyan) }
+    .post-excerpt { color: var(--text-s); font-size: 14px; line-height: 1.7; margin-bottom: 18px }
+    .post-footer { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px }
+    .post-tags { display: flex; flex-wrap: wrap; gap: 6px }
+    .post-tag { font-size: 12px; font-weight: 500; color: var(--text-s); background: var(--bg); padding: 4px 10px; border-radius: 6px; border: 1px solid var(--border) }
+    .read-more { font-size: 14px; font-weight: 700; color: var(--cyan); display: flex; align-items: center; gap: 4px; transition: gap .2s }
+    .post-card:hover .read-more { gap: 8px }
+
+    /* Snippet Card */
+    .snippet-card {
+      background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px;
+      overflow: hidden; margin-bottom: 16px; transition: border-color .25s;
+    }
+    .snippet-card:hover { border-color: var(--border-hover) }
+    .snippet-header { padding: 16px 20px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border) }
+    .snippet-header h4 { font-size: 15px; font-weight: 700; color: #fff }
+    .snippet-header .snippet-lang { font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 6px; background: rgba(14,165,233,.12); color: var(--cyan) }
+    .snippet-code { padding: 20px; font-family: "JetBrains Mono", monospace; font-size: 13px; line-height: 1.7; color: var(--text); overflow-x: auto; white-space: pre }
+    .snippet-desc { padding: 0 20px 16px; font-size: 13px; color: var(--text-muted); line-height: 1.6 }
+    .snippet-tags { padding: 0 20px 16px; display: flex; gap: 6px }
+
+    /* Empty state */
+    .empty-state { padding: 80px 0; text-align: center; border: 1px dashed var(--border); border-radius: 16px; color: var(--text-muted) }
+
+    /* Series List */
+    .series-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 16px }
+    .series-card {
+      background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px;
+      padding: 24px; transition: all .25s; cursor: pointer;
+    }
+    .series-card:hover { border-color: var(--cyan); transform: translateY(-3px) }
+    .series-card h4 { font-size: 17px; font-weight: 700; color: #fff; margin-bottom: 8px }
+    .series-card p { font-size: 13px; color: var(--text-s); line-height: 1.6; margin-bottom: 12px }
+    .series-meta { display: flex; gap: 12px; font-size: 12px; color: var(--text-muted) }
+    .series-progress { height: 4px; border-radius: 2px; background: var(--border); margin-top: 12px; overflow: hidden }
+    .series-progress-bar { height: 100%; border-radius: 2px; background: linear-gradient(90deg, var(--cyan), var(--green)) }
+
+    /* Footer */
+    .blog-footer { border-top: 1px solid var(--border); padding: 32px 24px; text-align: center; color: var(--text-muted); font-size: 13px }
+    .blog-footer-inner { max-width: 1200px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px }
+    .blog-footer a { color: var(--text-s); transition: color .2s }
+    .blog-footer a:hover { color: #fff }
+
+    @media(max-width:800px) {
+      .main { grid-template-columns: 1fr }
+      .sidebar { position: static; display: flex; overflow-x: auto; gap: 4px }
+      .sidebar h3 { display: none }
+      .sidebar ul { display: flex; gap: 4px }
+      .cat-btn { white-space: nowrap; padding: 8px 12px; font-size: 13px }
+      .navbar-links { display: none }
+      .tab-nav { overflow-x: auto }
+    }
+  </style>
+</head>
+
+<body>
+  <!-- Navbar -->
+  <nav class="navbar">
+    <div class="navbar-inner">
+      <a class="navbar-brand" href="index.html">
+        <span class="icon">>_</span>
+        <span>Dev<span class="accent">.Embedded</span></span>
+      </a>
+      <div class="navbar-links">
+        <a href="index.html">Portfolio</a>
+        <a href="#" class="active">📝 Tech Blog</a>
+        <a href="index.html#skills">Stack</a>
+        <a href="index.html#contact">Contact</a>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Hero -->
+  <header class="hero">
+    <h1>Deep Dive into<br><span class="gradient">Low-Level Systems</span></h1>
+    <p>
+      하드웨어의 밑바닥 전기적 특성부터 상위 OS의 아키텍처까지.<br>
+      직감에 의존하지 않고 데이터시트와 오실로스코프로 검증하는 임베디드 SW 엔지니어링 기록입니다.
+    </p>
+    <div class="search-wrap">
+      <span class="search-icon">🔍</span>
+      <input type="text" id="search-input" placeholder="Search posts, tags, or errors (e.g. FreeRTOS, I2C, DMA...)">
+    </div>
+  </header>
+
+  <!-- Main -->
+  <div class="main">
+    <!-- Sidebar -->
+    <aside class="sidebar" id="sidebar">
+      <h3>Categories</h3>
+      <ul id="category-list"></ul>
+    </aside>
+
+    <!-- Feed -->
+    <div>
+      <!-- Tab Nav -->
+      <div class="tab-nav" id="tab-nav">
+        <button class="tab-btn active" data-tab="posts">📄 Posts</button>
+        <button class="tab-btn" data-tab="series">📚 Series</button>
+        <button class="tab-btn" data-tab="snippets">⚡ Snippets</button>
+      </div>
+
+      <!-- Feed Content -->
+      <div id="feed-content"></div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer class="blog-footer">
+    <div class="blog-footer-inner">
+      <p>© 2026 Dev.Embedded — Built with pure HTML/CSS/JS</p>
+      <div style="display:flex;gap:16px">
+        <a href="index.html">Portfolio</a>
+        <a href="https://github.com/jmGim" target="_blank">GitHub</a>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    /* ========================================
+       BLOG DATA
+    ======================================== */
+    const CATEGORIES = [
+      { id: "all", label: "All", icon: "" },
+      { id: "troubleshooting", label: "Troubleshooting", icon: "⚠️" },
+      { id: "firmware", label: "Firmware", icon: "🔧" },
+      { id: "rtos", label: "RTOS / OS", icon: "⚙️" },
+      { id: "communication", label: "Communication", icon: "📡" },
+      { id: "linux-bsp", label: "Linux BSP", icon: "🐧" },
+      { id: "edge-ai", label: "Edge AI", icon: "🤖" },
+      { id: "architecture", label: "Architecture", icon: "🏗️" },
+    ];
+
+    const POSTS = [
+      {
+        id: 1,
+        title: "FreeRTOS 우선순위 역전(Priority Inversion) 분석 및 Mutex 해결",
+        excerpt: "STM32F411 환경에서 MPU6050 센서 데이터 수집 중 발생한 RTOS Task 병목을 오실로스코프로 분석하고, Mutex Priority Inheritance로 해결한 기록입니다.",
+        category: "rtos",
+        level: "Advanced",
+        date: "2026. 07. 15",
+        readTime: "8 min",
+        tags: ["FreeRTOS", "STM32", "Debugging", "Mutex"],
+        content: "## 문제 상황\n\ngyroSystemTask(Normal3)가 I2C Mutex를 점유한 상태에서, 더 높은 우선순위의 Task가 선점하면서 중간 우선순위 Task가 CPU를 점유하는 우선순위 역전 현상 발생.\n\n## 분석 과정\n\n1. 오실로스코프로 GPIO 토글 핀을 설정하여 각 Task의 실행 구간을 시각화\n2. gyroSystemTask의 I2C 점유 시간이 20ms를 초과하는 구간 발견\n3. 해당 구간에서 magSystemTask가 불필요하게 CPU를 선점\n\n## 해결 방법\n\n```c\n// Priority Inheritance 활성화된 Mutex 생성\nconst osMutexAttr_t i2c_mutex_attr = {\n  .attr_bits = osMutexPrioInherit\n};\ni2c1_mutex = osMutexNew(&i2c_mutex_attr);\n```"
+      },
+      {
+        id: 2,
+        title: "DMA를 활용한 I2C 통신 최적화: CPU 점유율 90%→5%",
+        excerpt: "Polling 방식 I2C 통신의 한계를 분석하고, DMA(Direct Memory Access)와 하드웨어 인터럽트를 도입하여 실시간 제어기의 응답성을 극대화하는 방법을 다룹니다.",
+        category: "firmware",
+        level: "Expert",
+        date: "2026. 06. 28",
+        readTime: "12 min",
+        tags: ["DMA", "I2C", "Optimization", "HAL"],
+        content: "## Polling vs DMA 비교\n\n| 방식 | CPU 점유율 | 14바이트 전송 시간 |\n|------|-----------|------------------|\n| Polling | ~90% | 280μs (CPU 대기) |\n| DMA | ~5% | 280μs (백그라운드) |"
+      },
+      {
+        id: 3,
+        title: "상보필터 vs 칼만필터: 리소스 제한 환경에서의 센서 융합 선택 기준",
+        excerpt: "STM32F411(100MHz, FPU)에서 MPU6050+HMC5883L 9축 센서 융합 시 상보필터를 선택한 이유와 실측 데이터를 비교 분석합니다.",
+        category: "firmware",
+        level: "Advanced",
+        date: "2026. 06. 15",
+        readTime: "10 min",
+        tags: ["Sensor Fusion", "Complementary Filter", "Kalman", "MPU6050"],
+        content: "## 비교 결과\n\n- 상보필터: float 곱셈 2회, 메모리 8B\n- 칼만필터: 행렬 연산 20+회, 메모리 120B+\n- FreeRTOS Task 주기(20ms) 내 상보필터는 0.1ms, 칼만은 2.3ms 소요"
+      },
+      {
+        id: 4,
+        title: "ESP8266 AT 명령 기반 OTA: Passive Receive Mode로 데이터 유실 방지",
+        excerpt: "Active Mode에서 발생하는 UART 버퍼 오버플로우를 AT+CIPRECVMODE=1로 전환하여 해결한 OTA 다운로드 안정화 기록.",
+        category: "communication",
+        level: "Advanced",
+        date: "2026. 06. 01",
+        readTime: "9 min",
+        tags: ["ESP8266", "OTA", "UART", "AT Command"],
+        content: "## Active vs Passive Mode\n\n- Active: ESP가 데이터를 비동기 푸시 → STM32 UART 큐(256B) 오버플로우\n- Passive: STM32가 AT+CIPRECVDATA=512로 명시적 요청 → 동기적 흐름"
+      },
+      {
+        id: 5,
+        title: "STM32 Flash 파티셔닝과 Dual-Partition OTA 부트로더 설계",
+        excerpt: "512KB Flash를 Bootloader/Flag/App/Download 4개 영역으로 분할하고, CRC32 이중 검증으로 OTA 업데이트 신뢰성을 확보한 설계 문서.",
+        category: "architecture",
+        level: "Expert",
+        date: "2026. 05. 20",
+        readTime: "14 min",
+        tags: ["Bootloader", "Flash", "CRC32", "OTA"],
+        content: "## Flash Memory Map\n\n- Sector 0 (16KB): Bootloader\n- Sector 1 (16KB): OTA Metadata (Magic/Size/CRC32/Version)\n- Sector 2~5 (224KB): Application\n- Sector 6~7 (256KB): Download Partition"
+      },
+      {
+        id: 6,
+        title: "Verilog 타이밍 분석: DHT11 40-bit 프로토콜 나노초 단위 파싱",
+        excerpt: "FPGA 환경에서 DHT11 센서의 40-byte 시리얼 신호를 클럭 분주와 카운터로 디코딩하는 하드웨어 설계 기록.",
+        category: "firmware",
+        level: "Intermediate",
+        date: "2026. 05. 10",
+        readTime: "7 min",
+        tags: ["Verilog", "FPGA", "DHT11", "Timing"],
+        content: "## 핵심 타이밍\n\n- '0' bit: 26~28μs HIGH\n- '1' bit: 70μs HIGH\n- 50MHz 클럭 기준 카운터 임계값: 0→1400 cycles, 1→3500 cycles"
+      },
+      {
+        id: 7,
+        title: "C언어 메모리 맵 분석과 MISRA-C 정적 할당 원칙",
+        excerpt: "자동차/방산 도메인에서 동적 할당(malloc)을 극도로 지양해야 하는 이유와 .map 파일로 메모리 사용량을 분석하는 방법.",
+        category: "architecture",
+        level: "Intermediate",
+        date: "2026. 05. 05",
+        readTime: "6 min",
+        tags: ["MISRA-C", "Memory", "Static Analysis", "Map File"],
+        content: "## MISRA-C Rule 21.3\n\nmalloc, free, calloc, realloc 사용 금지\n\n이유: 힙 단편화, 결정적 실행 시간 보장 불가, 메모리 누수 위험"
+      },
+      {
+        id: 8,
+        title: "PID 제어기 실전 튜닝: 카메라 추적 짐벌 서보 안정화",
+        excerpt: "PID 게인 Kp→Kd→Ki 순서 튜닝, Anti-Windup, LPF 적용으로 서보모터 진동을 억제한 실전 사례.",
+        category: "troubleshooting",
+        level: "Advanced",
+        date: "2026. 04. 28",
+        readTime: "11 min",
+        tags: ["PID", "Servo", "LPF", "Control"],
+        content: "## 튜닝 순서\n\n1. Kp만 올려서 응답속도 확보 (진동 발생)\n2. Kd 추가하여 브레이크 효과 (오버슈트 감소)\n3. Ki 미세 추가하여 잔류 오차 제거\n4. LPF(α=0.6)로 고주파 노이즈 차단"
+      }
+    ];
+
+    const SERIES = [
+      { title: "STM32 OTA 업데이트 시스템 구축 A to Z", desc: "부트로더 설계부터 ESP8266 Wi-Fi 다운로드, Flash 파티셔닝, CRC32 검증까지 전 과정을 다루는 시리즈", posts: 5, completed: 3, tags: ["STM32", "OTA", "Bootloader"] },
+      { title: "FreeRTOS 실전 패턴 가이드", desc: "Task 설계, Semaphore/Mutex 동기화, 우선순위 역전 해결, Stack 모니터링까지 실무 중심 정리", posts: 4, completed: 2, tags: ["FreeRTOS", "RTOS", "Mutex"] },
+      { title: "센서 융합 알고리즘 Deep Dive", desc: "상보필터, 칼만필터, Tilt-Compensated Yaw, Hard-Iron 캘리브레이션 이론과 구현", posts: 3, completed: 1, tags: ["Sensor Fusion", "MPU6050", "Filter"] },
+      { title: "임베디드 C 코딩 스탠다드 (MISRA-C)", desc: "방산/자동차 SW 개발에 필수인 MISRA-C:2012 주요 Rule 정리 및 위반 사례 분석", posts: 6, completed: 1, tags: ["MISRA-C", "Static Analysis", "Safety"] },
+    ];
+
+    const SNIPPETS = [
+      {
+        title: "I2C Mutex 보호 패턴 (FreeRTOS)",
+        lang: "C",
+        code: `osMutexAcquire(i2c1_mutex, osWaitForever);
+HAL_I2C_Mem_Read(&hi2c1, ADDR, REG, 1, buf, len, 10);
+osMutexRelease(i2c1_mutex);`,
+        desc: "다중 Task에서 동일 I2C 버스 접근 시 반드시 Mutex로 보호. HAL Timeout도 설정하여 Hang 방지.",
+        tags: ["FreeRTOS", "I2C", "Mutex"]
+      },
+      {
+        title: "상보필터 (Complementary Filter)",
+        lang: "C",
+        code: `#define ALPHA 0.96f
+roll = ALPHA * (roll + gyro_rate_x * dt)
+     + (1.0f - ALPHA) * atan2f(accel_y, accel_z) * RAD_TO_DEG;`,
+        desc: "자이로 적분(빠른 반응)과 가속도 절대각(드리프트 보정)을 가중 합산. α가 클수록 자이로 의존.",
+        tags: ["Filter", "IMU", "Sensor Fusion"]
+      },
+      {
+        title: "CRC32 바이트 단위 계산",
+        lang: "C",
+        code: `static uint32_t crc32_byte(uint32_t crc, uint8_t data) {
+  crc ^= data;
+  for (uint32_t i = 0; i < 8U; i++)
+    crc = (crc & 1U) ? ((crc >> 1U) ^ 0xEDB88320U) : (crc >> 1U);
+  return crc;
+}`,
+        desc: "OTA 다운로드 시 바이트 단위로 CRC32를 실시간 누적하여 Flash Write 후 무결성 검증에 사용.",
+        tags: ["CRC32", "OTA", "Integrity"]
+      },
+      {
+        title: "UART TX Mutex 패턴",
+        lang: "C",
+        code: `uint32_t uartWrite(uint8_t ch, uint8_t *data, uint32_t len) {
+  UART_HandleTypeDef *huart = (ch == 0) ? &huart2 : &huart1;
+  osMutexAcquire(uart_tx_mutex, osWaitForever);
+  if (HAL_UART_Transmit(huart, data, len, 100) != HAL_OK)
+    len = 0;
+  osMutexRelease(uart_tx_mutex);
+  return len;
+}`,
+        desc: "다중 Task에서 동시 UART 출력 시 데이터 깨짐 방지. CLI 로그와 텔레메트리가 혼재되는 환경 필수.",
+        tags: ["UART", "Mutex", "RTOS"]
+      },
+      {
+        title: "Flash Vector Table 유효성 검증",
+        lang: "C",
+        code: `static bool valid_image(uint32_t addr, uint32_t size) {
+  uint32_t sp = *(__IO uint32_t *)addr;
+  uint32_t reset = *(__IO uint32_t *)(addr + 4U);
+  if (sp < 0x20000000U || sp > 0x20020000U) return false;
+  if ((reset & 0x1U) == 0U) return false;  // Thumb bit
+  return true;
+}`,
+        desc: "OTA 다운로드 이미지의 벡터 테이블을 검증하여 잘못된 바이너리 실행 방지. SP/Reset Handler 범위 체크.",
+        tags: ["OTA", "Bootloader", "Safety"]
+      }
+    ];
+
+    /* ========================================
+       STATE
+    ======================================== */
+    let activeCategory = "all";
+    let activeTab = "posts";
+    let searchQuery = "";
+
+    /* ========================================
+       RENDER FUNCTIONS
+    ======================================== */
+    function renderCategories() {
+      const ul = document.getElementById('category-list');
+      ul.innerHTML = CATEGORIES.map(c => `
+        <li>
+          <button class="cat-btn ${activeCategory === c.id ? 'active' : ''}" data-cat="${c.id}">
+            <span class="cat-icon">${c.icon}</span> ${c.label}
+          </button>
+        </li>
+      `).join('');
+      ul.querySelectorAll('.cat-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          activeCategory = btn.dataset.cat;
+          render();
+        });
+      });
+    }
+
+    function renderTabs() {
+      document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.tab === activeTab);
+        btn.onclick = () => { activeTab = btn.dataset.tab; render(); };
+      });
+    }
+
+    function getLevelClass(level) {
+      const map = { Expert: 'level-expert', Advanced: 'level-advanced', Intermediate: 'level-intermediate', Beginner: 'level-beginner' };
+      return map[level] || 'level-intermediate';
+    }
+
+    function filterPosts() {
+      return POSTS.filter(p => {
+        const catMatch = activeCategory === "all" || p.category === activeCategory;
+        const q = searchQuery.toLowerCase();
+        const searchMatch = !q || p.title.toLowerCase().includes(q) || p.tags.some(t => t.toLowerCase().includes(q)) || p.excerpt.toLowerCase().includes(q);
+        return catMatch && searchMatch;
+      });
+    }
+
+    function renderPosts() {
+      const filtered = filterPosts();
+      const catLabel = CATEGORIES.find(c => c.id === activeCategory)?.label || "All";
+      let html = `
+        <div class="feed-header">
+          <h2>${activeCategory === 'all' ? 'Latest Posts' : catLabel}</h2>
+          <span>${filtered.length} posts found</span>
+        </div>
+      `;
+      if (filtered.length === 0) {
+        html += `<div class="empty-state"><p>검색 결과가 없습니다.</p></div>`;
+      } else {
+        filtered.forEach(p => {
+          html += `
+            <article class="post-card">
+              <div class="post-meta">
+                <span class="level-badge ${getLevelClass(p.level)}">${p.level}</span>
+                <span class="meta-text">⏱ ${p.readTime}</span>
+                <span class="meta-text">${p.date}</span>
+              </div>
+              <h3 class="post-title">${p.title}</h3>
+              <p class="post-excerpt">${p.excerpt}</p>
+              <div class="post-footer">
+                <div class="post-tags">${p.tags.map(t => `<span class="post-tag">#${t}</span>`).join('')}</div>
+                <span class="read-more">Read Article →</span>
+              </div>
+            </article>
+          `;
+        });
+      }
+      return html;
+    }
+
+    function renderSeries() {
+      let html = `
+        <div class="feed-header">
+          <h2>학습 시리즈</h2>
+          <span>${SERIES.length} series</span>
+        </div>
+        <div class="series-list">
+      `;
+      SERIES.forEach(s => {
+        const pct = Math.round((s.completed / s.posts) * 100);
+        html += `
+          <div class="series-card">
+            <h4>${s.title}</h4>
+            <p>${s.desc}</p>
+            <div class="series-meta">
+              <span>📄 ${s.completed}/${s.posts} posts</span>
+              <span>📊 ${pct}% complete</span>
+            </div>
+            <div class="post-tags" style="margin-top:10px">${s.tags.map(t => `<span class="post-tag">#${t}</span>`).join('')}</div>
+            <div class="series-progress"><div class="series-progress-bar" style="width:${pct}%"></div></div>
+          </div>
+        `;
+      });
+      html += `</div>`;
+      return html;
+    }
+
+    function renderSnippets() {
+      const q = searchQuery.toLowerCase();
+      const filtered = SNIPPETS.filter(s => !q || s.title.toLowerCase().includes(q) || s.tags.some(t => t.toLowerCase().includes(q)));
+      let html = `
+        <div class="feed-header">
+          <h2>Code Snippets</h2>
+          <span>${filtered.length} snippets</span>
+        </div>
+      `;
+      if (filtered.length === 0) {
+        html += `<div class="empty-state"><p>검색 결과가 없습니다.</p></div>`;
+      } else {
+        filtered.forEach(s => {
+          html += `
+            <div class="snippet-card">
+              <div class="snippet-header">
+                <h4>${s.title}</h4>
+                <span class="snippet-lang">${s.lang}</span>
+              </div>
+              <div class="snippet-code">${escapeHtml(s.code)}</div>
+              <div class="snippet-desc">💡 ${s.desc}</div>
+              <div class="snippet-tags">${s.tags.map(t => `<span class="post-tag">#${t}</span>`).join('')}</div>
+            </div>
+          `;
+        });
+      }
+      return html;
+    }
+
+    function escapeHtml(str) {
+      return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
+
+    function render() {
+      renderCategories();
+      renderTabs();
+      const feed = document.getElementById('feed-content');
+      if (activeTab === 'posts') feed.innerHTML = renderPosts();
+      else if (activeTab === 'series') feed.innerHTML = renderSeries();
+      else if (activeTab === 'snippets') feed.innerHTML = renderSnippets();
+    }
+
+    /* ========================================
+       EVENT LISTENERS
+    ======================================== */
+    document.getElementById('search-input').addEventListener('input', e => {
+      searchQuery = e.target.value;
+      render();
+    });
+
+    /* Initial render */
+    render();
+  </script>
+</body>
+</html>
