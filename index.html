@@ -133,16 +133,67 @@
       gap: 28px;
       font-size: 14px;
       font-weight: 500;
-      color: var(--text-s)
+      color: var(--text-s);
+      align-items: center;
     }
 
     .nav a {
-      transition: color .2s
+      transition: color .2s;
+      line-height: 1;
     }
 
     .nav a:hover {
       color: var(--cyan)
     }
+
+    /* Hamburger button — hidden on desktop */
+    .hamburger {
+      display: none;
+      flex-direction: column;
+      gap: 5px;
+      background: none;
+      padding: 6px;
+      cursor: pointer;
+    }
+    .hamburger span {
+      display: block;
+      width: 22px;
+      height: 2px;
+      background: var(--text);
+      border-radius: 2px;
+      transition: all .3s;
+    }
+    .hamburger.active span:nth-child(1) { transform: rotate(45deg) translate(5px, 5px) }
+    .hamburger.active span:nth-child(2) { opacity: 0 }
+    .hamburger.active span:nth-child(3) { transform: rotate(-45deg) translate(5px, -5px) }
+
+    /* Mobile dropdown menu */
+    .mobile-menu {
+      display: none;
+      position: fixed;
+      top: 64px;
+      left: 0;
+      right: 0;
+      z-index: 99;
+      background: rgba(255,255,255,.96);
+      backdrop-filter: blur(16px);
+      border-bottom: 1px solid var(--line);
+      padding: 12px clamp(18px, 5vw, 72px);
+      flex-direction: column;
+      gap: 4px;
+      box-shadow: var(--sh-md);
+    }
+    .mobile-menu.open { display: flex }
+    .mobile-menu a {
+      display: block;
+      padding: 14px 16px;
+      border-radius: 12px;
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--text-s);
+      transition: all .2s;
+    }
+    .mobile-menu a:hover { background: rgba(14,165,233,.06); color: var(--cyan) }
 
     /* =========================================
        3. SIDEBAR TABLE OF CONTENTS
@@ -913,14 +964,20 @@
         display: none
       }
 
+      .hamburger {
+        display: flex
+      }
+
       .stats-section,
       .skill-grid {
         grid-template-columns: 1fr
       }
 
       .sidebar-toc {
-        display: none
+        right: 12px;
+        gap: 16px;
       }
+      .toc-label { display: none }
 
       .hero-wrap {
         position: relative;
@@ -964,21 +1021,34 @@
       <a href="#about">About</a>
       <a href="#projects">Projects</a>
       <a href="#skills">Stack</a>
-      <a href="blog.html">📝 Tech Blog</a>
+      <!-- 아이콘 제거: "📝 " 부분을 지우면 아이콘 없어짐 -->
+      <a href="blog.html">Tech Blog</a>
       <a href="#contact">Contact</a>
     </nav>
+    <button class="hamburger" id="hamburger-btn" aria-label="메뉴 열기">
+      <span></span><span></span><span></span>
+    </button>
   </header>
+
+  <!-- ===== Mobile Dropdown Menu ===== -->
+  <div class="mobile-menu" id="mobile-menu">
+    <a href="#about">About</a>
+    <a href="#projects">Projects</a>
+    <a href="#skills">Stack</a>
+    <a href="blog.html">Tech Blog</a>
+    <a href="#contact">Contact</a>
+  </div>
 
   <!-- ===== Hero Section (sticky — Apple-style card stack) ===== -->
   <section class="hero-wrap" id="about">
     <div class="hero" id="hero-inner">
       <div class="hero-copy">
-        <p class="eyebrow">C/C++ · MCU · Edge/Cloud · OSEK/RTOS</p>
-        <h1>데이터를 검증하고<br>로직을 최적화하는<br><span>임베디드 엔지니어</span></h1>
+        <p class="eyebrow">C/C++ · STM32 · FreeRTOS · OTA · Sensor Fusion · Verilog</p>
+        <h1>오실로스코프로 검증하고<br>RTOS 위에서 제어하는<br><span>임베디드 SW 엔지니어</span></h1>
         <p class="lead">
-          하드웨어 레벨의 타이밍 분석부터 클라우드 데이터 파이프라인까지 전체 시스템의 흐름을 이해합니다.
-          문제가 생겼을 때 데이터를 수집하여 수식으로 검증하고, RTOS 자원 충돌과 우선순위를 튜닝하여
-          끝까지 동작하게 만드는 과정을 즐깁니다.
+          I2C 타이밍 충돌을 Mutex로 잡고, Flash 파티셔닝으로 OTA 신뢰성을 확보합니다.
+          센서 데이터를 수식으로 검증하고, RTOS Task 우선순위를 끝까지 튜닝하여
+          실시간 제약 조건을 만족시키는 안정적인 펌웨어를 만듭니다.
         </p>
         <div class="hero-actions">
           <a class="btn primary" href="#projects">프로젝트 열기</a>
@@ -1039,24 +1109,24 @@ Data-driven Embedded SW Engineer
     <section class="skills-section" id="skills">
       <div class="section-heading reveal">
         <p class="eyebrow">Core Stack</p>
-        <h2>문제 해결 중심의 기술 스택</h2>
+        <h2>실시간 시스템을 위한 기술 스택</h2>
       </div>
       <div class="skill-grid">
         <article class="reveal-stagger">
           <h3>MCU / RTOS</h3>
-          <p>STM32F411, Arduino, ESP32, FreeRTOS, OSEK. Task 우선순위 및 Stack Size 튜닝, Mutex/Semaphore 활용 동기화 처리.</p>
+          <p>STM32F411, ESP32 기반 펌웨어 개발. FreeRTOS(CMSIS-RTOS2) 6개 Task 설계, Binary Semaphore로 인터럽트 동기화, Mutex로 공유 자원 보호.</p>
         </article>
         <article class="reveal-stagger">
-          <h3>H/W &amp; Communication</h3>
-          <p>Verilog (타이밍 다이어그램 분석), CAN(FD) 매핑 개념, UART, SPI, I2C, MPU6050, HMC5883L 센서 제어.</p>
+          <h3>H/W Protocol &amp; Sensor</h3>
+          <p>I2C 멀티 디바이스(MPU6050+HMC5883L) 제어, UART DMA 기반 통신, Verilog 타이밍 분석, SPI/CAN(FD) 개념 이해.</p>
         </article>
         <article class="reveal-stagger">
-          <h3>Edge / Cloud</h3>
-          <p>Raspberry Pi, TCP/IP Socket, MQTT, Node-RED, MariaDB, PHP Dashboard, Grafana 통합 파이프라인 구축.</p>
+          <h3>OTA &amp; Bootloader</h3>
+          <p>Flash 4-Partition 설계, CRC32 이중 무결성 검증, 벡터 테이블 검증 후 Jump. ESP8266 AT 명령 기반 Wi-Fi 다운로드.</p>
         </article>
         <article class="reveal-stagger">
-          <h3>Algorithm &amp; Control</h3>
-          <p>PID 제어, Low Pass Filter, 칼만 필터, 푸리에 이론(주파수 분석), 다항식 커브 피팅을 이용한 오차 보정.</p>
+          <h3>Control &amp; Algorithm</h3>
+          <p>상보필터 센서 융합, PID 제어(Anti-Windup + LPF), Tilt-Compensated Yaw, 다항식 커브 피팅 오차 보정.</p>
         </article>
       </div>
     </section>
@@ -1066,8 +1136,8 @@ Data-driven Embedded SW Engineer
       <div class="contact-wrap reveal">
         <div>
           <p class="eyebrow">Contact</p>
-          <h2>현실의 제약을 데이터와 로직으로 극복합니다.</h2>
-          <p>단순히 라이브러리를 가져다 쓰는 것을 넘어, 왜 안되는지 파악하고 밑바닥부터 튜닝할 수 있는 개발자입니다.</p>
+          <h2>제약 조건을 코드로 해결합니다.</h2>
+          <p>"데이터시트를 보고 레지스터를 설정하고, 오실로스코프로 파형을 확인합니다. 라이브러리에 의존하기 전에 HAL 아래의 동작을 먼저 이해하는 개발자입니다."</p>
         </div>
         <div class="contact-card">
           <span>GitHub</span><strong>github.com/jmGim</strong>
@@ -1395,8 +1465,12 @@ Data-driven Embedded SW Engineer
        SCROLL REVEAL — Intersection Observer
     =============================================== */
     const revealObs = new IntersectionObserver(entries => {
-      entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('visible'); });
-    }, { threshold: 0.12, rootMargin: '0px 0px -40px 0px' });
+      entries.forEach(e => {
+        if (e.isIntersecting) {
+          e.target.classList.add('visible');
+        }
+      });
+    }, { threshold: 0.05 });
 
     document.querySelectorAll('.reveal, .reveal-stagger').forEach(el => revealObs.observe(el));
 
@@ -1468,6 +1542,25 @@ Data-driven Embedded SW Engineer
         });
         ticking = true;
       }
+    });
+
+    /* ==============================================
+       HAMBURGER MENU TOGGLE
+    =============================================== */
+    const hamburgerBtn = document.getElementById('hamburger-btn');
+    const mobileMenu = document.getElementById('mobile-menu');
+
+    hamburgerBtn.addEventListener('click', () => {
+      hamburgerBtn.classList.toggle('active');
+      mobileMenu.classList.toggle('open');
+    });
+
+    // 모바일 메뉴 링크 클릭 시 메뉴 닫기
+    mobileMenu.querySelectorAll('a').forEach(a => {
+      a.addEventListener('click', () => {
+        hamburgerBtn.classList.remove('active');
+        mobileMenu.classList.remove('open');
+      });
     });
   </script>
 </body>

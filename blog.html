@@ -16,168 +16,154 @@
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap">
 
   <style>
+    /* ===== Light Theme Variables (same as index.html) ===== */
     :root {
-      --bg: #0F1117;
-      --bg-card: #1A1D24;
-      --bg-input: #1A1D24;
-      --border: #2A2D35;
-      --border-hover: #3A3D45;
-      --text: #E2E8F0;
-      --text-s: #94A3B8;
-      --text-muted: #64748B;
+      --bg: #f7f8fc;
+      --bg-white: #ffffff;
+      --bg-card: #ffffff;
+      --line: rgba(0, 0, 0, 0.07);
+      --text: #1e293b;
+      --text-s: #475569;
+      --muted: #94a3b8;
       --cyan: #0ea5e9;
       --blue: #3b82f6;
       --green: #10b981;
       --purple: #8b5cf6;
       --yellow: #eab308;
       --orange: #f97316;
-      --red: #ef4444;
+      --sh-sm: 0 1px 3px rgba(0,0,0,.04), 0 4px 12px rgba(0,0,0,.04);
+      --sh-md: 0 4px 16px rgba(0,0,0,.06), 0 12px 40px rgba(0,0,0,.06);
+      --sh-lg: 0 8px 30px rgba(0,0,0,.08), 0 24px 60px rgba(0,0,0,.10);
+      --r-sm: 16px;
       font-family: "Pretendard", system-ui, sans-serif;
     }
-
     *, *::before, *::after { box-sizing: border-box; margin: 0 }
     html { scroll-behavior: smooth }
     body { background: var(--bg); color: var(--text); min-height: 100vh; -webkit-font-smoothing: antialiased }
     a { color: inherit; text-decoration: none }
     button { font: inherit; color: inherit; border: none; outline: none; cursor: pointer; background: none }
 
-    /* Navbar */
-    .navbar {
-      position: sticky; top: 0; z-index: 50;
-      border-bottom: 1px solid var(--border);
-      background: rgba(15,17,23,.85);
-      backdrop-filter: blur(16px);
-    }
-    .navbar-inner {
-      max-width: 1200px; margin: 0 auto; padding: 0 24px;
-      height: 64px; display: flex; align-items: center; justify-content: space-between;
-    }
-    .navbar-brand {
-      display: flex; align-items: center; gap: 8px;
-      font-weight: 800; font-size: 18px; color: #fff; cursor: pointer;
-    }
-    .navbar-brand .icon { color: var(--cyan); font-size: 22px }
+    /* ===== Navbar ===== */
+    .navbar { position: sticky; top: 0; z-index: 50; border-bottom: 1px solid var(--line); background: rgba(255,255,255,.82); backdrop-filter: blur(20px) saturate(180%); -webkit-backdrop-filter: blur(20px) saturate(180%) }
+    .navbar-inner { max-width: 1200px; margin: 0 auto; padding: 0 24px; height: 64px; display: flex; align-items: center; justify-content: space-between }
+    .navbar-brand { display: flex; align-items: center; gap: 8px; font-weight: 800; font-size: 17px; color: var(--text) }
+    .navbar-brand .icon { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 8px; background: linear-gradient(135deg, var(--cyan), var(--green)); color: #fff; font-size: 12px; font-weight: 800 }
     .navbar-brand .accent { color: var(--cyan) }
-    .navbar-links { display: flex; gap: 24px; font-size: 14px; font-weight: 500 }
-    .navbar-links a { color: var(--text-s); transition: color .2s }
-    .navbar-links a:hover { color: #fff }
-    .navbar-links a.active { color: var(--cyan) }
+    .navbar-links { display: flex; gap: 24px; font-size: 14px; font-weight: 500; align-items: center }
+    .navbar-links a { color: var(--text-s); transition: color .2s; line-height: 1 }
+    .navbar-links a:hover { color: var(--cyan) }
+    .navbar-links a.active { color: var(--cyan); font-weight: 700 }
 
-    /* Hero */
-    .hero { max-width: 1200px; margin: 0 auto; padding: 64px 24px 48px }
-    .hero h1 { font-size: clamp(32px, 5vw, 48px); font-weight: 800; color: #fff; line-height: 1.2; margin-bottom: 16px }
-    .hero h1 .gradient { background: linear-gradient(135deg, var(--cyan), #67e8f9); -webkit-background-clip: text; color: transparent }
-    .hero p { color: var(--text-muted); font-size: 16px; line-height: 1.7; max-width: 680px; margin-bottom: 32px }
+    /* ===== Hero ===== */
+    .hero { max-width: 1200px; margin: 0 auto; padding: 56px 24px 40px; background: radial-gradient(ellipse at 20% 30%, rgba(14,165,233,.06), transparent 50%), radial-gradient(ellipse at 75% 20%, rgba(16,185,129,.05), transparent 45%) }
+    .hero h1 { font-size: clamp(30px, 4.5vw, 44px); font-weight: 800; color: var(--text); line-height: 1.25; margin-bottom: 14px; letter-spacing: -.03em }
+    .hero h1 .gradient { background: linear-gradient(135deg, var(--cyan), var(--green)); -webkit-background-clip: text; color: transparent }
+    .hero p { color: var(--muted); font-size: 15px; line-height: 1.7; max-width: 640px; margin-bottom: 28px }
+    .search-wrap { position: relative; max-width: 500px }
+    .search-wrap input { width: 100%; background: var(--bg-white); border: 1px solid var(--line); border-radius: 14px; padding: 13px 18px 13px 44px; font-size: 14px; color: var(--text); transition: all .2s; box-shadow: var(--sh-sm) }
+    .search-wrap input:focus { border-color: var(--cyan); outline: none; box-shadow: 0 0 0 3px rgba(14,165,233,.12) }
+    .search-wrap input::placeholder { color: var(--muted) }
+    .search-wrap .search-icon { position: absolute; left: 16px; top: 50%; transform: translateY(-50%); color: var(--muted); font-size: 16px }
 
-    /* Search */
-    .search-wrap { position: relative; max-width: 520px }
-    .search-wrap input {
-      width: 100%; background: var(--bg-input); border: 1px solid var(--border);
-      border-radius: 999px; padding: 14px 20px 14px 48px;
-      font-size: 14px; color: #fff; transition: border-color .2s;
-    }
-    .search-wrap input:focus { border-color: var(--cyan); outline: none; box-shadow: 0 0 0 3px rgba(14,165,233,.15) }
-    .search-wrap input::placeholder { color: var(--text-muted) }
-    .search-wrap .search-icon { position: absolute; left: 18px; top: 50%; transform: translateY(-50%); color: var(--text-muted); font-size: 18px }
+    /* ===== Layout ===== */
+    .main { max-width: 1200px; margin: 0 auto; padding: 0 24px 80px; display: grid; grid-template-columns: 200px 1fr; gap: 40px }
 
-    /* Main Layout */
-    .main { max-width: 1200px; margin: 0 auto; padding: 0 24px 80px; display: grid; grid-template-columns: 220px 1fr; gap: 48px }
-
-    /* Sidebar */
+    /* ===== Sidebar ===== */
     .sidebar { position: sticky; top: 88px; align-self: start }
-    .sidebar h3 { font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: .12em; margin-bottom: 12px; padding: 0 12px }
+    .sidebar h3 { font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .12em; margin-bottom: 10px; padding: 0 8px }
     .sidebar ul { list-style: none; padding: 0 }
-    .cat-btn {
-      display: flex; align-items: center; gap: 8px; width: 100%;
-      padding: 10px 14px; border-radius: 10px; font-size: 14px; font-weight: 500;
-      color: var(--text-s); transition: all .2s; text-align: left;
-    }
-    .cat-btn:hover { background: var(--bg-card); color: #fff }
-    .cat-btn.active { background: rgba(14,165,233,.1); color: var(--cyan) }
-    .cat-btn .cat-icon { font-size: 16px; width: 20px; text-align: center }
+    .cat-btn { display: flex; align-items: center; gap: 6px; width: 100%; padding: 9px 12px; border-radius: 10px; font-size: 13px; font-weight: 500; color: var(--text-s); transition: all .2s; text-align: left }
+    .cat-btn:hover { background: rgba(14,165,233,.05); color: var(--cyan) }
+    .cat-btn.active { background: rgba(14,165,233,.08); color: var(--cyan); font-weight: 700 }
 
-    /* Tab Navigation */
-    .tab-nav { display: flex; gap: 4px; margin-bottom: 24px; background: var(--bg-card); border-radius: 12px; padding: 4px; border: 1px solid var(--border) }
-    .tab-btn {
-      padding: 10px 20px; border-radius: 10px; font-size: 13px; font-weight: 600;
-      color: var(--text-s); transition: all .2s;
-    }
-    .tab-btn:hover { color: #fff }
-    .tab-btn.active { background: var(--cyan); color: #fff }
+    /* ===== Tab Nav ===== */
+    .tab-nav { display: flex; gap: 4px; margin-bottom: 20px; background: var(--bg-white); border-radius: 14px; padding: 4px; border: 1px solid var(--line); box-shadow: var(--sh-sm) }
+    .tab-btn { padding: 10px 20px; border-radius: 11px; font-size: 13px; font-weight: 600; color: var(--text-s); transition: all .2s }
+    .tab-btn:hover { color: var(--cyan) }
+    .tab-btn.active { background: linear-gradient(135deg, var(--cyan), var(--green)); color: #fff; box-shadow: 0 2px 8px rgba(14,165,233,.2) }
 
-    /* Feed Header */
-    .feed-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px }
-    .feed-header h2 { font-size: 20px; font-weight: 800; color: #fff }
-    .feed-header span { font-size: 13px; color: var(--text-muted) }
+    /* ===== Feed ===== */
+    .feed-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px }
+    .feed-header h2 { font-size: 18px; font-weight: 800; color: var(--text) }
+    .feed-header span { font-size: 13px; color: var(--muted) }
 
-    /* Post Card */
-    .post-card {
-      background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px;
-      padding: 28px 32px; margin-bottom: 16px; cursor: pointer;
-      transition: border-color .25s, transform .25s;
-    }
-    .post-card:hover { border-color: var(--border-hover); transform: translateY(-2px) }
-    .post-meta { display: flex; align-items: center; gap: 12px; font-size: 12px; font-weight: 600; margin-bottom: 14px; flex-wrap: wrap }
-    .level-badge {
-      padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: 700;
-    }
-    .level-expert { background: rgba(139,92,246,.12); color: var(--purple); border: 1px solid rgba(139,92,246,.2) }
-    .level-advanced { background: rgba(14,165,233,.12); color: var(--cyan); border: 1px solid rgba(14,165,233,.2) }
-    .level-intermediate { background: rgba(16,185,129,.12); color: var(--green); border: 1px solid rgba(16,185,129,.2) }
-    .level-beginner { background: rgba(234,179,8,.12); color: var(--yellow); border: 1px solid rgba(234,179,8,.2) }
-    .post-meta .meta-text { color: var(--text-muted); display: flex; align-items: center; gap: 4px }
-    .post-title { font-size: 22px; font-weight: 800; color: #fff; margin-bottom: 10px; line-height: 1.35; transition: color .2s }
+    /* ===== Post Card ===== */
+    .post-card { background: var(--bg-card); border: 1px solid var(--line); border-radius: 18px; padding: 24px 28px; margin-bottom: 14px; cursor: pointer; transition: all .25s; box-shadow: var(--sh-sm) }
+    .post-card:hover { transform: translateY(-3px); box-shadow: var(--sh-md); border-color: rgba(14,165,233,.2) }
+    .post-meta { display: flex; align-items: center; gap: 10px; font-size: 12px; font-weight: 600; margin-bottom: 12px; flex-wrap: wrap }
+    .level-badge { padding: 3px 9px; border-radius: 6px; font-size: 11px; font-weight: 700 }
+    .level-expert { background: rgba(139,92,246,.1); color: var(--purple); border: 1px solid rgba(139,92,246,.18) }
+    .level-advanced { background: rgba(14,165,233,.08); color: var(--cyan); border: 1px solid rgba(14,165,233,.15) }
+    .level-intermediate { background: rgba(16,185,129,.08); color: var(--green); border: 1px solid rgba(16,185,129,.15) }
+    .level-beginner { background: rgba(234,179,8,.08); color: var(--yellow); border: 1px solid rgba(234,179,8,.15) }
+    .meta-text { color: var(--muted); display: flex; align-items: center; gap: 3px }
+    .post-title { font-size: 20px; font-weight: 800; color: var(--text); margin-bottom: 8px; line-height: 1.35; transition: color .2s }
     .post-card:hover .post-title { color: var(--cyan) }
-    .post-excerpt { color: var(--text-s); font-size: 14px; line-height: 1.7; margin-bottom: 18px }
-    .post-footer { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px }
-    .post-tags { display: flex; flex-wrap: wrap; gap: 6px }
-    .post-tag { font-size: 12px; font-weight: 500; color: var(--text-s); background: var(--bg); padding: 4px 10px; border-radius: 6px; border: 1px solid var(--border) }
-    .read-more { font-size: 14px; font-weight: 700; color: var(--cyan); display: flex; align-items: center; gap: 4px; transition: gap .2s }
+    .post-excerpt { color: var(--text-s); font-size: 14px; line-height: 1.7; margin-bottom: 16px }
+    .post-footer { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px }
+    .post-tags { display: flex; flex-wrap: wrap; gap: 5px }
+    .post-tag { font-size: 11px; font-weight: 600; color: var(--cyan); background: rgba(14,165,233,.06); padding: 3px 8px; border-radius: 6px; border: 1px solid rgba(14,165,233,.12) }
+    .read-more { font-size: 13px; font-weight: 700; color: var(--cyan); display: flex; align-items: center; gap: 4px; transition: gap .2s }
     .post-card:hover .read-more { gap: 8px }
 
-    /* Snippet Card */
-    .snippet-card {
-      background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px;
-      overflow: hidden; margin-bottom: 16px; transition: border-color .25s;
-    }
-    .snippet-card:hover { border-color: var(--border-hover) }
-    .snippet-header { padding: 16px 20px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border) }
-    .snippet-header h4 { font-size: 15px; font-weight: 700; color: #fff }
-    .snippet-header .snippet-lang { font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 6px; background: rgba(14,165,233,.12); color: var(--cyan) }
-    .snippet-code { padding: 20px; font-family: "JetBrains Mono", monospace; font-size: 13px; line-height: 1.7; color: var(--text); overflow-x: auto; white-space: pre }
-    .snippet-desc { padding: 0 20px 16px; font-size: 13px; color: var(--text-muted); line-height: 1.6 }
-    .snippet-tags { padding: 0 20px 16px; display: flex; gap: 6px }
+    /* ===== Snippet Card ===== */
+    .snippet-card { background: var(--bg-card); border: 1px solid var(--line); border-radius: 18px; overflow: hidden; margin-bottom: 14px; box-shadow: var(--sh-sm); transition: all .25s }
+    .snippet-card:hover { box-shadow: var(--sh-md) }
+    .snippet-header { padding: 14px 20px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--line); background: rgba(14,165,233,.02) }
+    .snippet-header h4 { font-size: 14px; font-weight: 700; color: var(--text) }
+    .snippet-lang { font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 6px; background: rgba(14,165,233,.08); color: var(--cyan) }
+    .snippet-code { padding: 18px 20px; font-family: "JetBrains Mono", monospace; font-size: 13px; line-height: 1.7; color: var(--text); overflow-x: auto; white-space: pre; background: #f1f5f9; border-bottom: 1px solid var(--line) }
+    .snippet-desc { padding: 12px 20px; font-size: 13px; color: var(--text-s); line-height: 1.6 }
+    .snippet-card .post-tags { padding: 0 20px 14px }
 
-    /* Empty state */
-    .empty-state { padding: 80px 0; text-align: center; border: 1px dashed var(--border); border-radius: 16px; color: var(--text-muted) }
-
-    /* Series List */
-    .series-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 16px }
-    .series-card {
-      background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px;
-      padding: 24px; transition: all .25s; cursor: pointer;
-    }
-    .series-card:hover { border-color: var(--cyan); transform: translateY(-3px) }
-    .series-card h4 { font-size: 17px; font-weight: 700; color: #fff; margin-bottom: 8px }
-    .series-card p { font-size: 13px; color: var(--text-s); line-height: 1.6; margin-bottom: 12px }
-    .series-meta { display: flex; gap: 12px; font-size: 12px; color: var(--text-muted) }
-    .series-progress { height: 4px; border-radius: 2px; background: var(--border); margin-top: 12px; overflow: hidden }
+    /* ===== Series Card ===== */
+    .series-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 14px }
+    .series-card { background: var(--bg-card); border: 1px solid var(--line); border-radius: 18px; padding: 22px; box-shadow: var(--sh-sm); transition: all .25s; cursor: pointer }
+    .series-card:hover { transform: translateY(-3px); border-color: rgba(14,165,233,.2); box-shadow: var(--sh-md) }
+    .series-card h4 { font-size: 16px; font-weight: 700; color: var(--text); margin-bottom: 6px }
+    .series-card p { font-size: 13px; color: var(--text-s); line-height: 1.6; margin-bottom: 10px }
+    .series-meta { display: flex; gap: 12px; font-size: 12px; color: var(--muted) }
+    .series-progress { height: 4px; border-radius: 2px; background: var(--line); margin-top: 10px; overflow: hidden }
     .series-progress-bar { height: 100%; border-radius: 2px; background: linear-gradient(90deg, var(--cyan), var(--green)) }
 
-    /* Footer */
-    .blog-footer { border-top: 1px solid var(--border); padding: 32px 24px; text-align: center; color: var(--text-muted); font-size: 13px }
-    .blog-footer-inner { max-width: 1200px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px }
+    /* ===== Modal (same style as index.html) ===== */
+    .modal-overlay { position: fixed; inset: 0; z-index: 200; background: rgba(15,23,42,.3); backdrop-filter: blur(6px); display: flex; align-items: flex-end; justify-content: center; opacity: 0; pointer-events: none; transition: opacity .35s }
+    .modal-overlay.active { opacity: 1; pointer-events: all }
+    .modal-content { width: min(880px, 96vw); max-height: 90vh; background: var(--bg-white); border-radius: 28px 28px 0 0; box-shadow: var(--sh-lg); overflow: hidden; display: flex; flex-direction: column; transform: translateY(100%); transition: transform .45s cubic-bezier(.4,0,.2,1) }
+    .modal-overlay.active .modal-content { transform: translateY(0) }
+    .modal-handle { width: 40px; height: 5px; border-radius: 3px; background: #d1d5db; position: absolute; top: 8px; left: 50%; transform: translateX(-50%) }
+    .modal-header { display: flex; align-items: center; justify-content: space-between; padding: 22px 28px 14px; border-bottom: 1px solid var(--line); position: sticky; top: 0; background: var(--bg-white); z-index: 1 }
+    .modal-title { font-weight: 800; font-size: 16px }
+    .modal-close { width: 36px; height: 36px; border-radius: 50%; background: rgba(0,0,0,.04); display: grid; place-items: center; font-size: 18px; color: var(--muted); transition: all .2s }
+    .modal-close:hover { background: rgba(248,113,113,.12); color: #ef4444 }
+    .modal-body { padding: 28px; overflow-y: auto; flex: 1 }
+    .modal-body h2 { font-size: clamp(20px, 3vw, 26px); letter-spacing: -.02em; margin-bottom: 6px; color: var(--text) }
+    .modal-body h3 { margin-top: 24px; padding-bottom: 6px; border-bottom: 1px solid var(--line); font-size: 15px; color: var(--text) }
+    .modal-body p, .modal-body li { color: var(--text-s); line-height: 1.8; font-size: 14px }
+    .modal-body ul { padding-left: 20px }
+    .modal-body li { margin-bottom: 4px }
+    .modal-body .tag-list { display: flex; flex-wrap: wrap; gap: 5px; margin: 10px 0 16px }
+    .modal-body .tag { display: inline-flex; padding: 4px 9px; border-radius: 7px; font-size: 12px; font-weight: 600; background: rgba(14,165,233,.07); color: var(--cyan); border: 1px solid rgba(14,165,233,.13) }
+    .modal-body pre { background: #f1f5f9; border: 1px solid var(--line); border-radius: 12px; padding: 16px 20px; font-family: "JetBrains Mono", monospace; font-size: 13px; line-height: 1.7; overflow-x: auto; margin: 12px 0 }
+    .modal-body .img-wrap { border-radius: 12px; overflow: hidden; border: 1px solid var(--line); margin: 12px 0 }
+    .modal-body .img-wrap img { width: 100%; height: auto; display: block }
+
+    /* ===== Empty ===== */
+    .empty-state { padding: 64px 0; text-align: center; border: 1px dashed var(--line); border-radius: 16px; color: var(--muted) }
+
+    /* ===== Footer ===== */
+    .blog-footer { border-top: 1px solid var(--line); padding: 28px 24px; text-align: center; color: var(--muted); font-size: 13px }
+    .blog-footer-inner { max-width: 1200px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px }
     .blog-footer a { color: var(--text-s); transition: color .2s }
-    .blog-footer a:hover { color: #fff }
+    .blog-footer a:hover { color: var(--cyan) }
 
     @media(max-width:800px) {
       .main { grid-template-columns: 1fr }
-      .sidebar { position: static; display: flex; overflow-x: auto; gap: 4px }
+      .sidebar { position: static }
+      .sidebar ul { display: flex; flex-wrap: wrap; gap: 4px }
       .sidebar h3 { display: none }
-      .sidebar ul { display: flex; gap: 4px }
-      .cat-btn { white-space: nowrap; padding: 8px 12px; font-size: 13px }
+      .cat-btn { padding: 7px 10px; font-size: 12px; white-space: nowrap }
       .navbar-links { display: none }
-      .tab-nav { overflow-x: auto }
     }
   </style>
 </head>
@@ -187,12 +173,12 @@
   <nav class="navbar">
     <div class="navbar-inner">
       <a class="navbar-brand" href="index.html">
-        <span class="icon">>_</span>
+        <span class="icon">&lt;/&gt;</span>
         <span>Dev<span class="accent">.Embedded</span></span>
       </a>
       <div class="navbar-links">
         <a href="index.html">Portfolio</a>
-        <a href="#" class="active">📝 Tech Blog</a>
+        <a href="#" class="active">Tech Blog</a>
         <a href="index.html#skills">Stack</a>
         <a href="index.html#contact">Contact</a>
       </div>
@@ -204,7 +190,7 @@
     <h1>Deep Dive into<br><span class="gradient">Low-Level Systems</span></h1>
     <p>
       하드웨어의 밑바닥 전기적 특성부터 상위 OS의 아키텍처까지.<br>
-      직감에 의존하지 않고 데이터시트와 오실로스코프로 검증하는 임베디드 SW 엔지니어링 기록입니다.
+      데이터시트와 오실로스코프로 검증하는 임베디드 SW 엔지니어링 기록.
     </p>
     <div class="search-wrap">
       <span class="search-icon">🔍</span>
@@ -214,27 +200,32 @@
 
   <!-- Main -->
   <div class="main">
-    <!-- Sidebar -->
     <aside class="sidebar" id="sidebar">
       <h3>Categories</h3>
       <ul id="category-list"></ul>
     </aside>
-
-    <!-- Feed -->
     <div>
-      <!-- Tab Nav -->
       <div class="tab-nav" id="tab-nav">
-        <button class="tab-btn active" data-tab="posts">📄 Posts</button>
-        <button class="tab-btn" data-tab="series">📚 Series</button>
-        <button class="tab-btn" data-tab="snippets">⚡ Snippets</button>
+        <button class="tab-btn active" data-tab="posts">Posts</button>
+        <button class="tab-btn" data-tab="series">Series</button>
+        <button class="tab-btn" data-tab="snippets">Snippets</button>
       </div>
-
-      <!-- Feed Content -->
       <div id="feed-content"></div>
     </div>
   </div>
 
-  <!-- Footer -->
+  <!-- Modal -->
+  <div class="modal-overlay" id="modal-overlay">
+    <div class="modal-content">
+      <div class="modal-handle"></div>
+      <div class="modal-header">
+        <span class="modal-title" id="modal-title"></span>
+        <button class="modal-close" id="modal-close" aria-label="닫기">✕</button>
+      </div>
+      <div class="modal-body" id="modal-body"></div>
+    </div>
+  </div>
+
   <footer class="blog-footer">
     <div class="blog-footer-inner">
       <p>© 2026 Dev.Embedded — Built with pure HTML/CSS/JS</p>
@@ -247,7 +238,7 @@
 
   <script>
     /* ========================================
-       BLOG DATA
+       CATEGORIES
     ======================================== */
     const CATEGORIES = [
       { id: "all", label: "All", icon: "" },
@@ -255,168 +246,295 @@
       { id: "firmware", label: "Firmware", icon: "🔧" },
       { id: "rtos", label: "RTOS / OS", icon: "⚙️" },
       { id: "communication", label: "Communication", icon: "📡" },
-      { id: "linux-bsp", label: "Linux BSP", icon: "🐧" },
-      { id: "edge-ai", label: "Edge AI", icon: "🤖" },
       { id: "architecture", label: "Architecture", icon: "🏗️" },
     ];
 
+    /* ========================================
+       POSTS — 날짜/시간은 date 필드에서 직접 설정
+       snippets 배열: 포스트 내부 코드 스니펫 → Snippets 탭에 자동 추가
+    ======================================== */
     const POSTS = [
       {
         id: 1,
-        title: "FreeRTOS 우선순위 역전(Priority Inversion) 분석 및 Mutex 해결",
-        excerpt: "STM32F411 환경에서 MPU6050 센서 데이터 수집 중 발생한 RTOS Task 병목을 오실로스코프로 분석하고, Mutex Priority Inheritance로 해결한 기록입니다.",
-        category: "rtos",
+        title: "I2C 버스 Hang 현상 분석: MPU6050 + HMC5883L 동시 접근 트러블슈팅",
+        excerpt: "FreeRTOS 환경에서 두 센서가 동일 I2C1 버스를 경쟁적으로 접근할 때 발생하는 HAL_BUSY 현상의 원인과 Mutex 기반 해결 기록.",
+        category: "troubleshooting",
         level: "Advanced",
-        date: "2026. 07. 15",
-        readTime: "8 min",
-        tags: ["FreeRTOS", "STM32", "Debugging", "Mutex"],
-        content: "## 문제 상황\n\ngyroSystemTask(Normal3)가 I2C Mutex를 점유한 상태에서, 더 높은 우선순위의 Task가 선점하면서 중간 우선순위 Task가 CPU를 점유하는 우선순위 역전 현상 발생.\n\n## 분석 과정\n\n1. 오실로스코프로 GPIO 토글 핀을 설정하여 각 Task의 실행 구간을 시각화\n2. gyroSystemTask의 I2C 점유 시간이 20ms를 초과하는 구간 발견\n3. 해당 구간에서 magSystemTask가 불필요하게 CPU를 선점\n\n## 해결 방법\n\n```c\n// Priority Inheritance 활성화된 Mutex 생성\nconst osMutexAttr_t i2c_mutex_attr = {\n  .attr_bits = osMutexPrioInherit\n};\ni2c1_mutex = osMutexNew(&i2c_mutex_attr);\n```"
+        date: "2026. 07. 20",         // ← 날짜 직접 설정
+        readTime: "10 min",
+        tags: ["I2C", "FreeRTOS", "Mutex", "MPU6050", "HMC5883L"],
+        // 포스트 상세 내용 (모달에 표시)
+        sections: [
+          { type: "h3", text: "🔍 문제 상황" },
+          { type: "p", text: "gyroSystemTask와 magSystemTask가 동일 I2C1 버스에서 HAL_I2C_Mem_Read()를 호출할 때, RTOS 컨텍스트 스위칭 타이밍에 의해 간헐적으로 I2C 버스가 HAL_BUSY 상태로 멈추는 현상 발생." },
+          { type: "img", src: "https://upload.wikimedia.org/wikipedia/commons/thumb/0/04/I2C_controller-target.svg/640px-I2C_controller-target.svg.png", alt: "I2C 버스 구조도" },
+          { type: "h3", text: "📊 원인 분석" },
+          { type: "ul", items: [
+            "두 Task가 동일 I2C 페리페럴에 비동기 접근 → HAL 내부 Lock 플래그 경합",
+            "Task A가 I2C Read 중 컨텍스트 스위칭 → Task B가 같은 I2C에 Read 시도 → HAL_BUSY 반환",
+            "오실로스코프 SDA/SCL 파형 확인: ACK 후 STOP 없이 새로운 START 발생"
+          ]},
+          { type: "h3", text: "✅ 해결: osMutex 기반 I2C 접근 보호" },
+          { type: "p", text: "공유 I2C 버스에 osMutex를 적용하여 한 번에 하나의 Task만 접근할 수 있도록 직렬화했습니다." },
+          { type: "code", lang: "C", title: "I2C Mutex 적용 패턴", code: `// hw.c — 시스템 초기화 시 Mutex 생성
+osMutexId_t i2c1_mutex;
+void hwInit(void) {
+  i2c1_mutex = osMutexNew(NULL);
+}
+
+// gyro.c — 센서 읽기 시 Mutex 보호
+bool Gyro_Read(gyro_data_t *data) {
+  osMutexAcquire(i2c1_mutex, osWaitForever);
+  HAL_StatusTypeDef ret = HAL_I2C_Mem_Read(
+    &hi2c1, MPU6050_ADDR << 1, 0x3B,
+    I2C_MEMADD_SIZE_8BIT, raw, 14, 50);
+  osMutexRelease(i2c1_mutex);
+  return (ret == HAL_OK);
+}` },
+          { type: "h3", text: "📈 결과" },
+          { type: "ul", items: [
+            "I2C Hang 현상 완전 해소 (48시간 연속 동작 테스트 통과)",
+            "HAL Timeout을 50ms로 설정하여 만약의 Hang에도 자동 복구",
+            "두 센서 데이터 갱신 주기: MPU6050 50Hz + HMC5883L 10Hz 안정 유지"
+          ]}
+        ]
       },
       {
         id: 2,
-        title: "DMA를 활용한 I2C 통신 최적화: CPU 점유율 90%→5%",
-        excerpt: "Polling 방식 I2C 통신의 한계를 분석하고, DMA(Direct Memory Access)와 하드웨어 인터럽트를 도입하여 실시간 제어기의 응답성을 극대화하는 방법을 다룹니다.",
-        category: "firmware",
+        title: "ESP8266 OTA: Active vs Passive Receive Mode 데이터 유실 해결",
+        excerpt: "AWS S3에서 펌웨어 다운로드 시 중간 청크 누락으로 CRC32 불일치가 발생한 원인과 Passive Mode 전환으로 해결한 과정.",
+        category: "communication",
         level: "Expert",
-        date: "2026. 06. 28",
+        date: "2026. 07. 15",
         readTime: "12 min",
-        tags: ["DMA", "I2C", "Optimization", "HAL"],
-        content: "## Polling vs DMA 비교\n\n| 방식 | CPU 점유율 | 14바이트 전송 시간 |\n|------|-----------|------------------|\n| Polling | ~90% | 280μs (CPU 대기) |\n| DMA | ~5% | 280μs (백그라운드) |"
+        tags: ["ESP8266", "OTA", "UART", "AT Command", "CRC32"],
+        sections: [
+          { type: "h3", text: "🔍 문제 상황" },
+          { type: "p", text: "ESP8266 기본 Active Receive Mode에서 +IPD로 데이터가 비동기 푸시되면, STM32의 UART 수신 큐(256B)가 오버플로우되어 바이너리 중간 청크가 유실됨." },
+          { type: "h3", text: "📊 Active vs Passive 비교" },
+          { type: "code", lang: "Text", title: "Active Mode 문제점", code: `[Active Mode — 기존]
+ESP8266 → +IPD,512:<data> → STM32 UART RX (256B Queue)
+                                    ↓
+                              Queue Overflow!
+                              데이터 유실 → CRC32 불일치
+
+[Passive Mode — 해결]
+STM32 → AT+CIPRECVDATA=512 → ESP8266 응답 대기
+                              ↓
+                        +CIPRECVDATA,512:<data>
+                              ↓
+                        Flash Write → 다음 청크 요청` },
+          { type: "h3", text: "✅ 해결: Passive Receive Mode 전환" },
+          { type: "code", lang: "C", title: "Passive Mode 초기화", code: `bool esp8266_Init(void) {
+  // Passive Receive Mode 활성화
+  if (!sendATCommand("AT+CIPRECVMODE=1", "OK", 1000))
+    return false;
+  
+  // 이후 데이터는 AT+CIPRECVDATA=N 으로만 수신
+  return true;
+}
+
+// 청크 단위 동기 수신
+uint32_t esp8266_RecvChunk(uint8_t *buf, uint32_t size) {
+  char cmd[40];
+  snprintf(cmd, sizeof(cmd), "AT+CIPRECVDATA=%lu", size);
+  sendATCommand(cmd, "+CIPRECVDATA", 5000);
+  return parseRecvData(buf, size);
+}` },
+          { type: "h3", text: "📈 결과" },
+          { type: "ul", items: [
+            "CRC32 불일치 0건 (100회 연속 OTA 테스트 통과)",
+            "다운로드 속도: ~45KB/s (512B 청크 기준, SSL 포함)",
+            "STM32 UART 큐 오버플로우 원천 차단"
+          ]}
+        ]
       },
       {
         id: 3,
-        title: "상보필터 vs 칼만필터: 리소스 제한 환경에서의 센서 융합 선택 기준",
-        excerpt: "STM32F411(100MHz, FPU)에서 MPU6050+HMC5883L 9축 센서 융합 시 상보필터를 선택한 이유와 실측 데이터를 비교 분석합니다.",
-        category: "firmware",
-        level: "Advanced",
-        date: "2026. 06. 15",
-        readTime: "10 min",
-        tags: ["Sensor Fusion", "Complementary Filter", "Kalman", "MPU6050"],
-        content: "## 비교 결과\n\n- 상보필터: float 곱셈 2회, 메모리 8B\n- 칼만필터: 행렬 연산 20+회, 메모리 120B+\n- FreeRTOS Task 주기(20ms) 내 상보필터는 0.1ms, 칼만은 2.3ms 소요"
+        title: "STM32 Flash 4-Partition OTA 부트로더 설계: CRC32 이중 검증",
+        excerpt: "512KB Flash를 Bootloader/Flag/App/Download로 분할하고 벡터 테이블 검증 + CRC32 이중 검증으로 OTA 업데이트 신뢰성을 확보한 설계 문서.",
+        category: "architecture",
+        level: "Expert",
+        date: "2026. 07. 10",
+        readTime: "14 min",
+        tags: ["Bootloader", "Flash", "CRC32", "OTA", "STM32"],
+        sections: [
+          { type: "h3", text: "🏗️ Flash Memory 파티션 설계" },
+          { type: "p", text: "STM32F411의 512KB Flash를 4개 영역으로 분할하여, 기존 펌웨어를 보존하면서 새 이미지를 안전하게 적용합니다." },
+          { type: "code", lang: "Text", title: "Flash Partition Map", code: `┌──────────────────────────────────────────────┐
+│ Sector 0 (16KB)  │ 0x08000000  BOOTLOADER   │
+├──────────────────────────────────────────────┤
+│ Sector 1 (16KB)  │ 0x08004000  OTA FLAG      │
+│                  │ {magic, size, crc32, ver}  │
+├──────────────────────────────────────────────┤
+│ Sector 2~5       │ 0x08008000  APPLICATION   │
+│ (224KB)          │ ← Linker ORIGIN           │
+├──────────────────────────────────────────────┤
+│ Sector 6~7       │ 0x08040000  DOWNLOAD      │
+│ (256KB)          │ ← ESP8266 Write Target    │
+└──────────────────────────────────────────────┘` },
+          { type: "h3", text: "🔐 벡터 테이블 유효성 검증" },
+          { type: "code", lang: "C", title: "이미지 유효성 검증 함수", code: `static bool valid_image(uint32_t addr, uint32_t size) {
+  if (size < 8U || size > APP_MAX_SIZE) return false;
+  
+  uint32_t sp    = *(__IO uint32_t *)addr;
+  uint32_t reset = *(__IO uint32_t *)(addr + 4U);
+  
+  // SP가 SRAM 범위 내인지, 8-byte aligned인지
+  if (sp < 0x20000000U || sp > 0x20020000U) return false;
+  if (sp & 0x7U) return false;
+  
+  // Reset Handler가 Thumb 모드인지
+  if ((reset & 0x1U) == 0U) return false;
+  
+  // Reset Handler가 APP 영역 내인지
+  uint32_t reset_addr = reset & ~1U;
+  if (reset_addr < addr || reset_addr >= addr + size)
+    return false;
+    
+  return true;
+}` },
+          { type: "h3", text: "📈 OTA 업데이트 시퀀스" },
+          { type: "ul", items: [
+            "1. ESP8266 Wi-Fi → Download Partition에 이미지 저장 + 실시간 CRC32 계산",
+            "2. OTA Flag (0xDEADBEEF) + 메타데이터를 Sector 1에 기록",
+            "3. System Reset → Bootloader가 Flag 읽기",
+            "4. Download → Application 복사 (Word 단위) + CRC32 재검증",
+            "5. Flag 삭제 → Jump_To_App()"
+          ]}
+        ]
       },
       {
         id: 4,
-        title: "ESP8266 AT 명령 기반 OTA: Passive Receive Mode로 데이터 유실 방지",
-        excerpt: "Active Mode에서 발생하는 UART 버퍼 오버플로우를 AT+CIPRECVMODE=1로 전환하여 해결한 OTA 다운로드 안정화 기록.",
-        category: "communication",
+        title: "상보필터 기반 3축 자세 추정: Roll/Pitch/Yaw 구현 및 튜닝",
+        excerpt: "MPU6050 자이로+가속도, HMC5883L 지자기 데이터를 상보필터로 융합하여 3축 자세를 추정한 구현 기록.",
+        category: "firmware",
         level: "Advanced",
-        date: "2026. 06. 01",
-        readTime: "9 min",
-        tags: ["ESP8266", "OTA", "UART", "AT Command"],
-        content: "## Active vs Passive Mode\n\n- Active: ESP가 데이터를 비동기 푸시 → STM32 UART 큐(256B) 오버플로우\n- Passive: STM32가 AT+CIPRECVDATA=512로 명시적 요청 → 동기적 흐름"
+        date: "2026. 07. 05",
+        readTime: "11 min",
+        tags: ["Sensor Fusion", "Complementary Filter", "MPU6050", "HMC5883L"],
+        sections: [
+          { type: "h3", text: "📐 상보필터 원리" },
+          { type: "p", text: "자이로스코프의 빠른 반응(단기 정확)과 가속도계의 절대 각도(장기 안정)를 가중 합산하여, 두 센서의 단점을 상호 보상합니다." },
+          { type: "code", lang: "C", title: "상보필터 구현 (Roll/Pitch)", code: `#define ALPHA  0.96f   // 자이로 가중치
+#define DT     0.02f   // 샘플링 주기 (50Hz)
+#define RAD2DEG 57.2957795f
+
+// Roll 상보필터
+float accel_roll = atan2f(accel_y, accel_z) * RAD2DEG;
+roll = ALPHA * (roll + gyro_x * DT)
+     + (1.0f - ALPHA) * accel_roll;
+
+// Pitch 상보필터
+float accel_pitch = atan2f(-accel_x,
+  sqrtf(accel_y*accel_y + accel_z*accel_z)) * RAD2DEG;
+pitch = ALPHA * (pitch + gyro_y * DT)
+      + (1.0f - ALPHA) * accel_pitch;` },
+          { type: "h3", text: "🧭 Tilt-Compensated Yaw" },
+          { type: "code", lang: "C", title: "지자기 기울기 보상 Yaw", code: `// Roll/Pitch로 기울기 보상
+float cos_r = cosf(roll * DEG2RAD);
+float sin_r = sinf(roll * DEG2RAD);
+float cos_p = cosf(pitch * DEG2RAD);
+float sin_p = sinf(pitch * DEG2RAD);
+
+float mag_x_comp = mag_x * cos_p
+                 + mag_z * sin_p;
+float mag_y_comp = mag_x * sin_r * sin_p
+                 + mag_y * cos_r
+                 - mag_z * sin_r * cos_p;
+
+float yaw_mag = atan2f(-mag_y_comp, mag_x_comp) * RAD2DEG;
+
+// Yaw 상보필터 (α=0.94)
+yaw = 0.94f * (yaw + gyro_z * DT) + 0.06f * yaw_mag;` },
+          { type: "h3", text: "📈 튜닝 결과" },
+          { type: "ul", items: [
+            "α=0.96: 자이로 96% + 가속도 4% → 드리프트 장기 보정, 단기 노이즈 억제",
+            "Hard-Iron 캘리브레이션: X offset=-14, Y offset=-36 적용하여 정적 자기장 왜곡 제거",
+            "부호 반전: imu->yaw = -filtered_rel_yaw 로 Positive Feedback 루프 해소"
+          ]}
+        ]
       },
       {
         id: 5,
-        title: "STM32 Flash 파티셔닝과 Dual-Partition OTA 부트로더 설계",
-        excerpt: "512KB Flash를 Bootloader/Flag/App/Download 4개 영역으로 분할하고, CRC32 이중 검증으로 OTA 업데이트 신뢰성을 확보한 설계 문서.",
-        category: "architecture",
-        level: "Expert",
-        date: "2026. 05. 20",
-        readTime: "14 min",
-        tags: ["Bootloader", "Flash", "CRC32", "OTA"],
-        content: "## Flash Memory Map\n\n- Sector 0 (16KB): Bootloader\n- Sector 1 (16KB): OTA Metadata (Magic/Size/CRC32/Version)\n- Sector 2~5 (224KB): Application\n- Sector 6~7 (256KB): Download Partition"
-      },
-      {
-        id: 6,
-        title: "Verilog 타이밍 분석: DHT11 40-bit 프로토콜 나노초 단위 파싱",
-        excerpt: "FPGA 환경에서 DHT11 센서의 40-byte 시리얼 신호를 클럭 분주와 카운터로 디코딩하는 하드웨어 설계 기록.",
-        category: "firmware",
-        level: "Intermediate",
-        date: "2026. 05. 10",
-        readTime: "7 min",
-        tags: ["Verilog", "FPGA", "DHT11", "Timing"],
-        content: "## 핵심 타이밍\n\n- '0' bit: 26~28μs HIGH\n- '1' bit: 70μs HIGH\n- 50MHz 클럭 기준 카운터 임계값: 0→1400 cycles, 1→3500 cycles"
-      },
-      {
-        id: 7,
-        title: "C언어 메모리 맵 분석과 MISRA-C 정적 할당 원칙",
-        excerpt: "자동차/방산 도메인에서 동적 할당(malloc)을 극도로 지양해야 하는 이유와 .map 파일로 메모리 사용량을 분석하는 방법.",
-        category: "architecture",
-        level: "Intermediate",
-        date: "2026. 05. 05",
-        readTime: "6 min",
-        tags: ["MISRA-C", "Memory", "Static Analysis", "Map File"],
-        content: "## MISRA-C Rule 21.3\n\nmalloc, free, calloc, realloc 사용 금지\n\n이유: 힙 단편화, 결정적 실행 시간 보장 불가, 메모리 누수 위험"
-      },
-      {
-        id: 8,
-        title: "PID 제어기 실전 튜닝: 카메라 추적 짐벌 서보 안정화",
-        excerpt: "PID 게인 Kp→Kd→Ki 순서 튜닝, Anti-Windup, LPF 적용으로 서보모터 진동을 억제한 실전 사례.",
+        title: "카메라 추적 PID 제어기: Anti-Windup과 LPF로 서보 안정화",
+        excerpt: "ESP32 카메라 좌표를 PID 제어기로 처리하여 짐벌 서보를 추적 제어할 때 발생한 누적 오차와 진동 문제 해결.",
         category: "troubleshooting",
         level: "Advanced",
-        date: "2026. 04. 28",
-        readTime: "11 min",
-        tags: ["PID", "Servo", "LPF", "Control"],
-        content: "## 튜닝 순서\n\n1. Kp만 올려서 응답속도 확보 (진동 발생)\n2. Kd 추가하여 브레이크 효과 (오버슈트 감소)\n3. Ki 미세 추가하여 잔류 오차 제거\n4. LPF(α=0.6)로 고주파 노이즈 차단"
+        date: "2026. 06. 28",
+        readTime: "9 min",
+        tags: ["PID", "Servo", "LPF", "Anti-Windup", "Camera"],
+        sections: [
+          { type: "h3", text: "🔍 문제: PID 누적 오차 + 서보 진동" },
+          { type: "p", text: "Push 방식에서 gimbalSettingCamOffset()이 100Hz 제어 루프마다 호출되면서 PID 출력이 이중/삼중 누적. 동시에 P항만으로 제어 시 고주파 진동 발생." },
+          { type: "h3", text: "✅ 해결: Pull Architecture + Anti-Windup + LPF" },
+          { type: "code", lang: "C", title: "PID with Anti-Windup + LPF", code: `#define KP  0.4f
+#define KI  0.02f
+#define KD  0.15f
+#define IMAX 100.0f       // Anti-Windup 제한
+#define LPF_ALPHA 0.6f    // 저역 통과 필터 계수
+
+static float err_sum = 0, err_prev = 0;
+static float filtered = 0;
+
+float pid_update(float setpoint, float current) {
+  float err = setpoint - current;
+  
+  // I항 Anti-Windup: ±IMAX 범위 제한
+  err_sum += err;
+  if (err_sum > IMAX) err_sum = IMAX;
+  if (err_sum < -IMAX) err_sum = -IMAX;
+  
+  // PID 출력
+  float output = KP * err + KI * err_sum
+               + KD * (err - err_prev);
+  err_prev = err;
+  
+  // LPF: 고주파 진동 억제
+  filtered = (1.0f - LPF_ALPHA) * filtered
+           + LPF_ALPHA * output;
+  
+  return filtered;
+}` },
+          { type: "h3", text: "📈 결과" },
+          { type: "ul", items: [
+            "Pull Architecture: 카메라 30Hz 갱신 시에만 1회 누적 → 이중 누적 문제 해결",
+            "LPF(α=0.6): 서보 진동 폭 ±3° → ±0.5° 감소",
+            "Anti-Windup: 타겟 상실 후 복귀 시 오버슈트 80% 감소"
+          ]}
+        ]
       }
     ];
 
     const SERIES = [
-      { title: "STM32 OTA 업데이트 시스템 구축 A to Z", desc: "부트로더 설계부터 ESP8266 Wi-Fi 다운로드, Flash 파티셔닝, CRC32 검증까지 전 과정을 다루는 시리즈", posts: 5, completed: 3, tags: ["STM32", "OTA", "Bootloader"] },
-      { title: "FreeRTOS 실전 패턴 가이드", desc: "Task 설계, Semaphore/Mutex 동기화, 우선순위 역전 해결, Stack 모니터링까지 실무 중심 정리", posts: 4, completed: 2, tags: ["FreeRTOS", "RTOS", "Mutex"] },
-      { title: "센서 융합 알고리즘 Deep Dive", desc: "상보필터, 칼만필터, Tilt-Compensated Yaw, Hard-Iron 캘리브레이션 이론과 구현", posts: 3, completed: 1, tags: ["Sensor Fusion", "MPU6050", "Filter"] },
-      { title: "임베디드 C 코딩 스탠다드 (MISRA-C)", desc: "방산/자동차 SW 개발에 필수인 MISRA-C:2012 주요 Rule 정리 및 위반 사례 분석", posts: 6, completed: 1, tags: ["MISRA-C", "Static Analysis", "Safety"] },
+      { title: "STM32 OTA 시스템 구축 A to Z", desc: "부트로더 설계 → ESP8266 다운로드 → Flash 파티셔닝 → CRC32 검증 전 과정", posts: 5, completed: 3, tags: ["STM32", "OTA", "Bootloader"] },
+      { title: "FreeRTOS 실전 패턴 가이드", desc: "Task 설계, Semaphore/Mutex 동기화, 우선순위 역전 해결, Stack 모니터링", posts: 4, completed: 2, tags: ["FreeRTOS", "RTOS", "Mutex"] },
+      { title: "센서 융합 알고리즘 Deep Dive", desc: "상보필터, Tilt-Compensated Yaw, Hard-Iron 캘리브레이션 이론과 구현", posts: 3, completed: 2, tags: ["Sensor Fusion", "MPU6050"] },
+      { title: "MISRA-C 코딩 스탠다드 정리", desc: "방산/자동차 SW 개발 필수 MISRA-C:2012 주요 Rule 및 위반 사례 분석", posts: 6, completed: 1, tags: ["MISRA-C", "Safety"] },
     ];
 
-    const SNIPPETS = [
-      {
-        title: "I2C Mutex 보호 패턴 (FreeRTOS)",
-        lang: "C",
-        code: `osMutexAcquire(i2c1_mutex, osWaitForever);
-HAL_I2C_Mem_Read(&hi2c1, ADDR, REG, 1, buf, len, 10);
-osMutexRelease(i2c1_mutex);`,
-        desc: "다중 Task에서 동일 I2C 버스 접근 시 반드시 Mutex로 보호. HAL Timeout도 설정하여 Hang 방지.",
-        tags: ["FreeRTOS", "I2C", "Mutex"]
-      },
-      {
-        title: "상보필터 (Complementary Filter)",
-        lang: "C",
-        code: `#define ALPHA 0.96f
-roll = ALPHA * (roll + gyro_rate_x * dt)
-     + (1.0f - ALPHA) * atan2f(accel_y, accel_z) * RAD_TO_DEG;`,
-        desc: "자이로 적분(빠른 반응)과 가속도 절대각(드리프트 보정)을 가중 합산. α가 클수록 자이로 의존.",
-        tags: ["Filter", "IMU", "Sensor Fusion"]
-      },
-      {
-        title: "CRC32 바이트 단위 계산",
-        lang: "C",
-        code: `static uint32_t crc32_byte(uint32_t crc, uint8_t data) {
-  crc ^= data;
-  for (uint32_t i = 0; i < 8U; i++)
-    crc = (crc & 1U) ? ((crc >> 1U) ^ 0xEDB88320U) : (crc >> 1U);
-  return crc;
-}`,
-        desc: "OTA 다운로드 시 바이트 단위로 CRC32를 실시간 누적하여 Flash Write 후 무결성 검증에 사용.",
-        tags: ["CRC32", "OTA", "Integrity"]
-      },
-      {
-        title: "UART TX Mutex 패턴",
-        lang: "C",
-        code: `uint32_t uartWrite(uint8_t ch, uint8_t *data, uint32_t len) {
-  UART_HandleTypeDef *huart = (ch == 0) ? &huart2 : &huart1;
-  osMutexAcquire(uart_tx_mutex, osWaitForever);
-  if (HAL_UART_Transmit(huart, data, len, 100) != HAL_OK)
-    len = 0;
-  osMutexRelease(uart_tx_mutex);
-  return len;
-}`,
-        desc: "다중 Task에서 동시 UART 출력 시 데이터 깨짐 방지. CLI 로그와 텔레메트리가 혼재되는 환경 필수.",
-        tags: ["UART", "Mutex", "RTOS"]
-      },
-      {
-        title: "Flash Vector Table 유효성 검증",
-        lang: "C",
-        code: `static bool valid_image(uint32_t addr, uint32_t size) {
-  uint32_t sp = *(__IO uint32_t *)addr;
-  uint32_t reset = *(__IO uint32_t *)(addr + 4U);
-  if (sp < 0x20000000U || sp > 0x20020000U) return false;
-  if ((reset & 0x1U) == 0U) return false;  // Thumb bit
-  return true;
-}`,
-        desc: "OTA 다운로드 이미지의 벡터 테이블을 검증하여 잘못된 바이너리 실행 방지. SP/Reset Handler 범위 체크.",
-        tags: ["OTA", "Bootloader", "Safety"]
-      }
-    ];
+    /* ========================================
+       AUTO SNIPPETS — 포스트 내 code 섹션에서 자동 수집
+    ======================================== */
+    function collectSnippets() {
+      const snippets = [];
+      POSTS.forEach(post => {
+        if (!post.sections) return;
+        post.sections.forEach(sec => {
+          if (sec.type === 'code') {
+            snippets.push({
+              title: sec.title || post.title,
+              lang: sec.lang || 'C',
+              code: sec.code,
+              desc: `📄 출처: "${post.title}"`,
+              tags: post.tags.slice(0, 3),
+              postId: post.id
+            });
+          }
+        });
+      });
+      return snippets;
+    }
 
     /* ========================================
        STATE
@@ -426,22 +544,58 @@ roll = ALPHA * (roll + gyro_rate_x * dt)
     let searchQuery = "";
 
     /* ========================================
-       RENDER FUNCTIONS
+       MODAL
+    ======================================== */
+    const overlay = document.getElementById('modal-overlay');
+    const modalTitle = document.getElementById('modal-title');
+    const modalBody = document.getElementById('modal-body');
+    const closeBtn = document.getElementById('modal-close');
+
+    function openPostModal(post) {
+      modalTitle.textContent = post.title;
+      let html = `
+        <div class="tag-list">${post.tags.map(t => `<span class="tag">${t}</span>`).join('')}</div>
+        <p style="color:var(--muted);font-size:13px;margin-bottom:20px">
+          <span class="level-badge ${getLevelClass(post.level)}">${post.level}</span>
+          &nbsp; ⏱ ${post.readTime} &nbsp; ${post.date}
+        </p>
+      `;
+      if (post.sections) {
+        post.sections.forEach(sec => {
+          if (sec.type === 'h3') html += `<h3>${sec.text}</h3>`;
+          else if (sec.type === 'p') html += `<p>${sec.text}</p>`;
+          else if (sec.type === 'ul') html += `<ul>${sec.items.map(i => `<li>${i}</li>`).join('')}</ul>`;
+          else if (sec.type === 'img') html += `<div class="img-wrap"><img src="${sec.src}" alt="${sec.alt}" loading="lazy"></div>`;
+          else if (sec.type === 'code') {
+            html += `<p style="font-size:13px;font-weight:700;color:var(--cyan);margin-top:12px">${sec.title || ''}</p>`;
+            html += `<pre><code>${escapeHtml(sec.code)}</code></pre>`;
+          }
+        });
+      }
+      modalBody.innerHTML = html;
+      overlay.classList.add('active');
+      document.body.style.overflow = 'hidden';
+    }
+    function closeModal() {
+      overlay.classList.remove('active');
+      document.body.style.overflow = '';
+    }
+    closeBtn.addEventListener('click', closeModal);
+    overlay.addEventListener('click', e => { if (e.target === overlay) closeModal(); });
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+
+    /* ========================================
+       RENDER
     ======================================== */
     function renderCategories() {
       const ul = document.getElementById('category-list');
       ul.innerHTML = CATEGORIES.map(c => `
-        <li>
-          <button class="cat-btn ${activeCategory === c.id ? 'active' : ''}" data-cat="${c.id}">
-            <span class="cat-icon">${c.icon}</span> ${c.label}
-          </button>
-        </li>
+        <li><button class="cat-btn ${activeCategory === c.id ? 'active' : ''}" data-cat="${c.id}">
+          ${c.icon ? '<span>'+c.icon+'</span>' : ''} ${c.label}
+        </button></li>
       `).join('');
       ul.querySelectorAll('.cat-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-          activeCategory = btn.dataset.cat;
-          render();
-        });
+        btn.addEventListener('click', () => { activeCategory = btn.dataset.cat; render(); });
       });
     }
 
@@ -452,35 +606,29 @@ roll = ALPHA * (roll + gyro_rate_x * dt)
       });
     }
 
-    function getLevelClass(level) {
-      const map = { Expert: 'level-expert', Advanced: 'level-advanced', Intermediate: 'level-intermediate', Beginner: 'level-beginner' };
-      return map[level] || 'level-intermediate';
+    function getLevelClass(l) {
+      return { Expert:'level-expert', Advanced:'level-advanced', Intermediate:'level-intermediate', Beginner:'level-beginner' }[l] || 'level-intermediate';
     }
 
     function filterPosts() {
       return POSTS.filter(p => {
         const catMatch = activeCategory === "all" || p.category === activeCategory;
         const q = searchQuery.toLowerCase();
-        const searchMatch = !q || p.title.toLowerCase().includes(q) || p.tags.some(t => t.toLowerCase().includes(q)) || p.excerpt.toLowerCase().includes(q);
-        return catMatch && searchMatch;
+        const sMatch = !q || p.title.toLowerCase().includes(q) || p.tags.some(t => t.toLowerCase().includes(q)) || p.excerpt.toLowerCase().includes(q);
+        return catMatch && sMatch;
       });
     }
 
     function renderPosts() {
       const filtered = filterPosts();
       const catLabel = CATEGORIES.find(c => c.id === activeCategory)?.label || "All";
-      let html = `
-        <div class="feed-header">
-          <h2>${activeCategory === 'all' ? 'Latest Posts' : catLabel}</h2>
-          <span>${filtered.length} posts found</span>
-        </div>
-      `;
-      if (filtered.length === 0) {
+      let html = `<div class="feed-header"><h2>${activeCategory === 'all' ? 'Latest Posts' : catLabel}</h2><span>${filtered.length} posts</span></div>`;
+      if (!filtered.length) {
         html += `<div class="empty-state"><p>검색 결과가 없습니다.</p></div>`;
       } else {
         filtered.forEach(p => {
           html += `
-            <article class="post-card">
+            <article class="post-card" data-post-id="${p.id}">
               <div class="post-meta">
                 <span class="level-badge ${getLevelClass(p.level)}">${p.level}</span>
                 <span class="meta-text">⏱ ${p.readTime}</span>
@@ -492,71 +640,50 @@ roll = ALPHA * (roll + gyro_rate_x * dt)
                 <div class="post-tags">${p.tags.map(t => `<span class="post-tag">#${t}</span>`).join('')}</div>
                 <span class="read-more">Read Article →</span>
               </div>
-            </article>
-          `;
+            </article>`;
         });
       }
       return html;
     }
 
     function renderSeries() {
-      let html = `
-        <div class="feed-header">
-          <h2>학습 시리즈</h2>
-          <span>${SERIES.length} series</span>
-        </div>
-        <div class="series-list">
-      `;
+      let html = `<div class="feed-header"><h2>학습 시리즈</h2><span>${SERIES.length} series</span></div><div class="series-list">`;
       SERIES.forEach(s => {
         const pct = Math.round((s.completed / s.posts) * 100);
         html += `
           <div class="series-card">
-            <h4>${s.title}</h4>
-            <p>${s.desc}</p>
-            <div class="series-meta">
-              <span>📄 ${s.completed}/${s.posts} posts</span>
-              <span>📊 ${pct}% complete</span>
-            </div>
-            <div class="post-tags" style="margin-top:10px">${s.tags.map(t => `<span class="post-tag">#${t}</span>`).join('')}</div>
+            <h4>${s.title}</h4><p>${s.desc}</p>
+            <div class="series-meta"><span>📄 ${s.completed}/${s.posts}</span><span>📊 ${pct}%</span></div>
+            <div class="post-tags" style="margin-top:8px">${s.tags.map(t => `<span class="post-tag">#${t}</span>`).join('')}</div>
             <div class="series-progress"><div class="series-progress-bar" style="width:${pct}%"></div></div>
-          </div>
-        `;
+          </div>`;
       });
-      html += `</div>`;
-      return html;
+      return html + '</div>';
     }
 
     function renderSnippets() {
+      const snippets = collectSnippets();
       const q = searchQuery.toLowerCase();
-      const filtered = SNIPPETS.filter(s => !q || s.title.toLowerCase().includes(q) || s.tags.some(t => t.toLowerCase().includes(q)));
-      let html = `
-        <div class="feed-header">
-          <h2>Code Snippets</h2>
-          <span>${filtered.length} snippets</span>
-        </div>
-      `;
-      if (filtered.length === 0) {
+      const filtered = snippets.filter(s => !q || s.title.toLowerCase().includes(q) || s.tags.some(t => t.toLowerCase().includes(q)));
+      let html = `<div class="feed-header"><h2>Code Snippets</h2><span>${filtered.length} snippets (포스트에서 자동 수집)</span></div>`;
+      if (!filtered.length) {
         html += `<div class="empty-state"><p>검색 결과가 없습니다.</p></div>`;
       } else {
         filtered.forEach(s => {
           html += `
             <div class="snippet-card">
-              <div class="snippet-header">
-                <h4>${s.title}</h4>
-                <span class="snippet-lang">${s.lang}</span>
-              </div>
+              <div class="snippet-header"><h4>${s.title}</h4><span class="snippet-lang">${s.lang}</span></div>
               <div class="snippet-code">${escapeHtml(s.code)}</div>
               <div class="snippet-desc">💡 ${s.desc}</div>
-              <div class="snippet-tags">${s.tags.map(t => `<span class="post-tag">#${t}</span>`).join('')}</div>
-            </div>
-          `;
+              <div class="post-tags">${s.tags.map(t => `<span class="post-tag">#${t}</span>`).join('')}</div>
+            </div>`;
         });
       }
       return html;
     }
 
-    function escapeHtml(str) {
-      return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    function escapeHtml(s) {
+      return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
     }
 
     function render() {
@@ -566,17 +693,35 @@ roll = ALPHA * (roll + gyro_rate_x * dt)
       if (activeTab === 'posts') feed.innerHTML = renderPosts();
       else if (activeTab === 'series') feed.innerHTML = renderSeries();
       else if (activeTab === 'snippets') feed.innerHTML = renderSnippets();
+
+      // 포스트 카드 클릭 이벤트 바인딩
+      if (activeTab === 'posts') {
+        feed.querySelectorAll('.post-card').forEach(card => {
+          card.addEventListener('click', (e) => {
+            const postId = parseInt(card.dataset.postId);
+            const post = POSTS.find(p => p.id === postId);
+            if (!post) return;
+
+            // Ctrl+Click → 새 페이지로 이동 (상세 페이지)
+            if (e.ctrlKey || e.metaKey) {
+              // 별도 상세 페이지가 없으면 모달로 대체
+              openPostModal(post);
+              return;
+            }
+            // 일반 클릭 → 모달 열기
+            openPostModal(post);
+          });
+        });
+      }
     }
 
     /* ========================================
-       EVENT LISTENERS
+       INIT
     ======================================== */
     document.getElementById('search-input').addEventListener('input', e => {
       searchQuery = e.target.value;
       render();
     });
-
-    /* Initial render */
     render();
   </script>
 </body>
