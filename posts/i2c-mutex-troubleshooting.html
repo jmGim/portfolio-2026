@@ -1,0 +1,438 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>I2C 버스 Hang 트러블슈팅 — Dev.Embedded</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'%3E%3Crect width='48' height='48' rx='12' fill='%230ea5e9'/%3E%3Ctext x='24' y='32' text-anchor='middle' font-family='system-ui' font-weight='800' font-size='14' fill='%23fff'%3E%3E_%3C/text%3E%3C/svg%3E">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap">
+  <style>
+    :root{--bg:#f7f8fc;--bg-white:#fff;--line:rgba(0,0,0,.07);--text:#1e293b;--text-s:#475569;--muted:#94a3b8;--cyan:#0ea5e9;--green:#10b981;--purple:#8b5cf6;--sh-sm:0 1px 3px rgba(0,0,0,.04),0 4px 12px rgba(0,0,0,.04);--sh-md:0 4px 16px rgba(0,0,0,.06),0 12px 40px rgba(0,0,0,.06);--r-sm:16px;font-family:"Pretendard",system-ui,sans-serif}
+    *,*::before,*::after{box-sizing:border-box;margin:0}
+    html{scroll-behavior:smooth;scroll-padding-top:120px}
+    body{background:var(--bg);color:var(--text);min-height:100vh;-webkit-font-smoothing:antialiased}
+    a{color:inherit;text-decoration:none}
+    button{font:inherit;color:inherit;border:none;outline:none;cursor:pointer;background:none}
+
+    /* === Topbar === */
+    .topbar{position:fixed;top:0;left:0;right:0;z-index:100;height:56px;display:flex;align-items:center;padding:0 clamp(16px,4vw,48px);background:rgba(255,255,255,.85);backdrop-filter:blur(16px);border-bottom:1px solid var(--line)}
+    .topbar-brand{display:flex;align-items:center;gap:8px;font-weight:800;font-size:15px;color:var(--text)}
+    .topbar-brand .mark{display:grid;place-items:center;width:30px;height:30px;border-radius:8px;background:linear-gradient(135deg,var(--cyan),var(--green));color:#fff;font-size:11px;font-weight:800}
+    .topbar-brand .accent{color:var(--cyan)}
+    .topbar-back{margin-left:auto;font-size:13px;font-weight:600;color:var(--cyan);display:flex;align-items:center;gap:4px;transition:gap .2s}
+    .topbar-back:hover{gap:6px}
+
+    /* === Post Header === */
+    .post-header{max-width:860px;margin:0 auto;padding:80px 24px 0}
+    .post-header h1{font-size:clamp(24px,4vw,36px);font-weight:800;line-height:1.3;letter-spacing:-.02em;margin-bottom:12px;color:var(--text)}
+    .post-meta-row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:16px;font-size:13px;color:var(--muted)}
+    .post-meta-row .badge{padding:3px 9px;border-radius:6px;font-size:11px;font-weight:700}
+    .badge-advanced{background:rgba(14,165,233,.08);color:var(--cyan);border:1px solid rgba(14,165,233,.15)}
+    .badge-expert{background:rgba(139,92,246,.1);color:var(--purple);border:1px solid rgba(139,92,246,.18)}
+    .tag-list{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:20px}
+    .tag{display:inline-flex;padding:4px 9px;border-radius:7px;font-size:12px;font-weight:600;background:rgba(14,165,233,.06);color:var(--cyan);border:1px solid rgba(14,165,233,.12)}
+
+    /* === Info Cards === */
+    .info-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:8px}
+    .info-card{padding:16px;border-radius:14px;background:var(--bg-white);border:1px solid var(--line);box-shadow:var(--sh-sm)}
+    .info-card dt{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px}
+    .info-card dd{font-size:14px;font-weight:600;color:var(--text)}
+
+    /* === Sticky Tab Nav === */
+    .tab-nav-wrap{position:sticky;top:56px;z-index:50;background:rgba(247,248,252,.92);backdrop-filter:blur(12px);border-bottom:1px solid var(--line);margin:0 -24px;padding:0 24px}
+    .tab-nav{max-width:860px;margin:0 auto;display:flex;gap:0;overflow-x:auto;-webkit-overflow-scrolling:touch}
+    .tab-nav a{display:flex;align-items:center;gap:6px;padding:14px 20px;font-size:14px;font-weight:600;color:var(--muted);white-space:nowrap;border-bottom:2px solid transparent;transition:all .2s}
+    .tab-nav a:hover{color:var(--text-s)}
+    .tab-nav a.active{color:var(--cyan);border-bottom-color:var(--cyan)}
+    .tab-num{font-size:12px;font-weight:800;width:22px;height:22px;border-radius:6px;display:grid;place-items:center;background:rgba(14,165,233,.08);color:var(--cyan);flex-shrink:0}
+    .tab-nav a.active .tab-num{background:var(--cyan);color:#fff}
+
+    /* === Content Sections === */
+    .post-content{max-width:860px;margin:0 auto;padding:0 24px 80px}
+    .section{padding-top:32px;min-height:200px}
+    .section h2{font-size:20px;font-weight:800;color:var(--text);margin-bottom:16px;padding-bottom:8px;border-bottom:2px solid var(--line)}
+    .section h3{font-size:16px;font-weight:700;color:var(--text);margin:24px 0 10px;display:flex;align-items:center;gap:8px}
+    .section p,.section li{color:var(--text-s);font-size:14px;line-height:1.8}
+    .section ul{padding-left:20px;margin:8px 0 16px}
+    .section li{margin-bottom:6px}
+    .section strong{color:var(--text);font-weight:700}
+
+    /* Images */
+    .img-block{margin:16px 0;border-radius:14px;overflow:hidden;border:1px solid var(--line);box-shadow:var(--sh-sm)}
+    .img-block img{width:100%;height:auto;display:block}
+    .img-block figcaption{padding:10px 16px;font-size:12px;color:var(--muted);background:var(--bg-white);border-top:1px solid var(--line);text-align:center}
+
+    /* Code blocks */
+    .code-block{margin:16px 0;border-radius:14px;overflow:hidden;border:1px solid var(--line);box-shadow:var(--sh-sm)}
+    .code-header{display:flex;justify-content:space-between;align-items:center;padding:10px 16px;background:rgba(14,165,233,.04);border-bottom:1px solid var(--line)}
+    .code-header span{font-size:13px;font-weight:700;color:var(--text)}
+    .code-header .lang{font-size:11px;font-weight:700;padding:2px 7px;border-radius:5px;background:rgba(14,165,233,.08);color:var(--cyan)}
+    .code-block pre{margin:0;padding:18px 20px;font-family:"JetBrains Mono",monospace;font-size:13px;line-height:1.7;color:var(--text);background:#f1f5f9;overflow-x:auto;white-space:pre}
+
+    /* Result cards */
+    .result-card{padding:16px 20px;border-radius:14px;background:rgba(16,185,129,.04);border:1px solid rgba(16,185,129,.15);margin:16px 0}
+    .result-card h4{font-size:14px;font-weight:700;color:var(--green);margin-bottom:8px}
+    .result-card li{color:var(--text-s);font-size:14px;line-height:1.7}
+
+    /* Footer */
+    .post-footer{max-width:860px;margin:0 auto;padding:24px;border-top:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;font-size:13px;color:var(--muted)}
+    .post-footer a{color:var(--cyan);font-weight:600;transition:opacity .2s}
+    .post-footer a:hover{opacity:.7}
+
+    /* === Language Toggle === */
+    .lang-toggle{position:fixed;bottom:24px;right:24px;z-index:90;display:flex;border-radius:12px;overflow:hidden;box-shadow:var(--sh-md);border:1px solid var(--line)}
+    .lang-btn{padding:10px 16px;font-size:13px;font-weight:700;background:var(--bg-white);color:var(--text-s);transition:all .2s}
+    .lang-btn.active{background:var(--cyan);color:#fff}
+    .lang-btn:hover:not(.active){background:rgba(14,165,233,.06)}
+
+    @media(max-width:640px){
+      .info-grid{grid-template-columns:1fr}
+      .tab-nav a{padding:12px 14px;font-size:13px}
+      html{scroll-padding-top:110px}
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Topbar -->
+  <header class="topbar">
+    <a class="topbar-brand" href="../blog.html">
+      <span class="mark">&lt;/&gt;</span>
+      <span>Dev<span class="accent">.Embedded</span></span>
+    </a>
+    <a class="topbar-back" href="../blog.html">← Blog로 돌아가기</a>
+  </header>
+
+  <!-- Post Header -->
+  <div class="post-header">
+    <h1 data-ko="I2C 버스 Hang 현상 분석: MPU6050 + HMC5883L 동시 접근 트러블슈팅"
+        data-en="I2C Bus Hang Analysis: MPU6050 + HMC5883L Concurrent Access Troubleshooting"></h1>
+    <div class="post-meta-row">
+      <span class="badge badge-advanced">Advanced</span>
+      <span>⏱ 10 min read</span>
+      <span>2026. 07. 20</span>
+    </div>
+    <div class="tag-list">
+      <span class="tag">I2C</span>
+      <span class="tag">FreeRTOS</span>
+      <span class="tag">Mutex</span>
+      <span class="tag">MPU6050</span>
+      <span class="tag">HMC5883L</span>
+      <span class="tag">STM32F411</span>
+    </div>
+
+    <!-- Info Cards -->
+    <div class="info-grid">
+      <div class="info-card">
+        <dt data-ko="기간" data-en="Period">기간</dt>
+        <dd>2025.07 ~ 2025.08</dd>
+      </div>
+      <div class="info-card">
+        <dt data-ko="목적" data-en="Objective">목적</dt>
+        <dd data-ko="I2C 멀티 디바이스 경합 해결" data-en="Resolve I2C multi-device contention">I2C 멀티 디바이스 경합 해결</dd>
+      </div>
+      <div class="info-card">
+        <dt data-ko="개발환경" data-en="Environment">개발환경</dt>
+        <dd>STM32CubeIDE, FreeRTOS, HAL</dd>
+      </div>
+      <div class="info-card">
+        <dt data-ko="프로젝트" data-en="Project">프로젝트</dt>
+        <dd data-ko="3축 짐벌 IMU 제어" data-en="3-Axis Gimbal IMU Control">3축 짐벌 IMU 제어</dd>
+      </div>
+    </div>
+  </div>
+
+  <!-- Sticky Tab Nav -->
+  <div class="tab-nav-wrap">
+    <nav class="tab-nav" id="tab-nav">
+      <a href="#overview" class="active" data-section="overview">
+        <span class="tab-num">01</span>
+        <span data-ko="개요" data-en="Overview">개요</span>
+      </a>
+      <a href="#design" data-section="design">
+        <span class="tab-num">02</span>
+        <span data-ko="설계 및 구현" data-en="Design & Implementation">설계 및 구현</span>
+      </a>
+      <a href="#troubleshoot" data-section="troubleshoot">
+        <span class="tab-num">03</span>
+        <span data-ko="트러블슈팅" data-en="Troubleshooting">트러블슈팅</span>
+      </a>
+      <a href="#reflection" data-section="reflection">
+        <span class="tab-num">04</span>
+        <span data-ko="고찰 및 느낀점" data-en="Reflection">고찰 및 느낀점</span>
+      </a>
+    </nav>
+  </div>
+
+  <!-- Content -->
+  <div class="post-content">
+
+    <!-- ===== 01 개요 ===== -->
+    <section class="section" id="overview">
+      <h2 data-ko="01 개요" data-en="01 Overview">01 개요</h2>
+      <p data-ko="FreeRTOS 기반 3축 짐벌 프로젝트에서 MPU6050(자이로/가속도)과 HMC5883L(지자기) 두 센서를 동일 I2C1 버스에서 제어할 때, 간헐적으로 I2C 버스가 멈추고 모든 HAL_I2C 함수가 HAL_BUSY를 반환하는 현상이 발생했습니다."
+         data-en="In a FreeRTOS-based 3-axis gimbal project, when controlling both MPU6050 (gyro/accelerometer) and HMC5883L (magnetometer) on the same I2C1 bus, the I2C bus intermittently hung and all HAL_I2C functions returned HAL_BUSY.">
+        FreeRTOS 기반 3축 짐벌 프로젝트에서 MPU6050(자이로/가속도)과 HMC5883L(지자기) 두 센서를 동일 I2C1 버스에서 제어할 때, 간헐적으로 I2C 버스가 멈추고 모든 HAL_I2C 함수가 HAL_BUSY를 반환하는 현상이 발생했습니다.
+      </p>
+
+      <h3 data-ko="🎯 담당 역할" data-en="🎯 My Role">🎯 담당 역할</h3>
+      <ul>
+        <li data-ko="MPU6050 + HMC5883L I2C 드라이버 구현 및 RTOS Task 설계"
+            data-en="MPU6050 + HMC5883L I2C driver implementation and RTOS Task design">MPU6050 + HMC5883L I2C 드라이버 구현 및 RTOS Task 설계</li>
+        <li data-ko="I2C 버스 경합 문제 분석 및 Mutex 기반 동기화 설계"
+            data-en="I2C bus contention analysis and Mutex-based synchronization design">I2C 버스 경합 문제 분석 및 Mutex 기반 동기화 설계</li>
+        <li data-ko="오실로스코프를 이용한 SDA/SCL 파형 분석"
+            data-en="SDA/SCL waveform analysis using oscilloscope">오실로스코프를 이용한 SDA/SCL 파형 분석</li>
+      </ul>
+
+      <h3 data-ko="🏗️ 시스템 구성" data-en="🏗️ System Architecture">🏗️ 시스템 구성</h3>
+      <div class="info-grid">
+        <div class="info-card">
+          <dt>MCU</dt>
+          <dd>STM32F411RET6 (Cortex-M4F, 100MHz)</dd>
+        </div>
+        <div class="info-card">
+          <dt>RTOS</dt>
+          <dd>FreeRTOS (CMSIS-RTOS2)</dd>
+        </div>
+        <div class="info-card">
+          <dt data-ko="센서" data-en="Sensors">센서</dt>
+          <dd>MPU6050 (0x68), HMC5883L (0x1E)</dd>
+        </div>
+        <div class="info-card">
+          <dt data-ko="버스" data-en="Bus">버스</dt>
+          <dd>I2C1, 100kHz Standard Mode</dd>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== 02 설계 및 구현 ===== -->
+    <section class="section" id="design">
+      <h2 data-ko="02 설계 및 구현" data-en="02 Design & Implementation">02 설계 및 구현</h2>
+
+      <h3 data-ko="📐 I2C 버스 공유 아키텍처" data-en="📐 I2C Bus Sharing Architecture">📐 I2C 버스 공유 아키텍처</h3>
+      <p data-ko="두 센서가 동일 I2C1 버스를 공유하며, 각각 별도의 FreeRTOS Task에서 독립적으로 읽기를 수행합니다."
+         data-en="Both sensors share the same I2C1 bus, and each performs independent reads from separate FreeRTOS Tasks.">
+        두 센서가 동일 I2C1 버스를 공유하며, 각각 별도의 FreeRTOS Task에서 독립적으로 읽기를 수행합니다.
+      </p>
+
+      <!-- 사진 첨부 예시 — src를 실제 이미지 경로로 변경하세요 -->
+      <figure class="img-block">
+        <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/0/04/I2C_controller-target.svg/640px-I2C_controller-target.svg.png" alt="I2C Bus Architecture">
+        <figcaption data-ko="I2C 버스 구조: Controller(STM32) → 2개 Target(MPU6050, HMC5883L)"
+                    data-en="I2C Bus Architecture: Controller(STM32) → 2 Targets(MPU6050, HMC5883L)">I2C 버스 구조: Controller(STM32) → 2개 Target(MPU6050, HMC5883L)</figcaption>
+      </figure>
+
+      <h3 data-ko="⚙️ Task 설계" data-en="⚙️ Task Design">⚙️ Task 설계</h3>
+      <div class="code-block">
+        <div class="code-header"><span data-ko="FreeRTOS Task 구성" data-en="FreeRTOS Task Configuration">FreeRTOS Task 구성</span><span class="lang">C</span></div>
+        <pre>// freertos.c — Task 생성
+osThreadNew(gyroSystemTask,  NULL, &amp;gyroTask_attr);   // Normal3, 4096B
+osThreadNew(magSystemTask,   NULL, &amp;magTask_attr);    // Normal3, 2048B
+
+// gyroSystemTask: Semaphore 대기 → MPU6050 I2C Read (50Hz)
+// magSystemTask:  osDelay(10)   → HMC5883L I2C Read (100Hz)</pre>
+      </div>
+
+      <h3 data-ko="🔧 MPU6050 초기화 시퀀스" data-en="🔧 MPU6050 Init Sequence">🔧 MPU6050 초기화 시퀀스</h3>
+      <div class="code-block">
+        <div class="code-header"><span>gyro.c — Gyro_Init()</span><span class="lang">C</span></div>
+        <pre>bool Gyro_Init(void) {
+  uint8_t val;
+
+  // 1. Hardware Reset
+  val = 0x80;
+  HAL_I2C_Mem_Write(&amp;hi2c1, MPU_ADDR&lt;&lt;1,
+    PWR_MGMT_1, 1, &amp;val, 1, 10);
+  osDelay(100);
+
+  // 2. PLL Clock Source (X-axis Gyro)
+  val = 0x01;
+  HAL_I2C_Mem_Write(&amp;hi2c1, MPU_ADDR&lt;&lt;1,
+    PWR_MGMT_1, 1, &amp;val, 1, 10);
+
+  // 3. DLPF 40Hz → CONFIG register
+  val = 0x03;
+  HAL_I2C_Mem_Write(&amp;hi2c1, MPU_ADDR&lt;&lt;1,
+    CONFIG, 1, &amp;val, 1, 10);
+
+  // 4. Sample Rate = 50Hz (1kHz / (19+1))
+  val = 19;
+  HAL_I2C_Mem_Write(&amp;hi2c1, MPU_ADDR&lt;&lt;1,
+    SMPLRT_DIV, 1, &amp;val, 1, 10);
+
+  // 5. Latch INT, Clear on Read
+  val = 0x30;
+  HAL_I2C_Mem_Write(&amp;hi2c1, MPU_ADDR&lt;&lt;1,
+    INT_PIN_CFG, 1, &amp;val, 1, 10);
+
+  return true;
+}</pre>
+      </div>
+    </section>
+
+    <!-- ===== 03 트러블슈팅 ===== -->
+    <section class="section" id="troubleshoot">
+      <h2 data-ko="03 트러블슈팅" data-en="03 Troubleshooting">03 트러블슈팅</h2>
+
+      <h3 data-ko="🔍 증상" data-en="🔍 Symptoms">🔍 증상</h3>
+      <ul>
+        <li data-ko="두 센서를 동시에 읽을 때 간헐적으로 I2C 버스가 멈춤" data-en="I2C bus intermittently hangs when reading both sensors simultaneously">두 센서를 동시에 읽을 때 간헐적으로 I2C 버스가 멈춤</li>
+        <li data-ko="HAL_I2C_Mem_Read()가 HAL_BUSY 반환 → 이후 모든 I2C 통신 불가" data-en="HAL_I2C_Mem_Read() returns HAL_BUSY → all subsequent I2C communication fails">HAL_I2C_Mem_Read()가 HAL_BUSY 반환 → 이후 모든 I2C 통신 불가</li>
+        <li data-ko="오실로스코프: ACK 후 STOP 조건 없이 새 START 발생 확인" data-en="Oscilloscope: new START condition without STOP after ACK detected">오실로스코프: ACK 후 STOP 조건 없이 새 START 발생 확인</li>
+      </ul>
+
+      <h3 data-ko="📊 원인 분석" data-en="📊 Root Cause Analysis">📊 원인 분석</h3>
+      <p data-ko="FreeRTOS의 두 Task(gyroSystemTask, magSystemTask)가 동일 우선순위(Normal3)로 동일 I2C1 페리페럴에 접근. HAL 드라이버 내부의 Lock 플래그와 RTOS 컨텍스트 스위칭 타이밍이 충돌하여 경합 발생."
+         data-en="Two FreeRTOS tasks (gyroSystemTask, magSystemTask) at the same priority (Normal3) access the same I2C1 peripheral. HAL driver's internal Lock flag conflicts with RTOS context switching timing, causing contention.">
+        FreeRTOS의 두 Task(gyroSystemTask, magSystemTask)가 동일 우선순위(Normal3)로 동일 I2C1 페리페럴에 접근. HAL 드라이버 내부의 Lock 플래그와 RTOS 컨텍스트 스위칭 타이밍이 충돌하여 경합 발생.
+      </p>
+
+      <div class="code-block">
+        <div class="code-header"><span data-ko="경합 발생 시나리오" data-en="Contention Scenario">경합 발생 시나리오</span><span class="lang">Text</span></div>
+        <pre>Time ─────────────────────────────────────────►
+
+gyroTask:  ┌─ I2C Read START ──── ACK ───┐
+           │  (hi2c1.Lock = HAL_LOCKED)   │
+           │                              │
+magTask:   │      ↑ Context Switch!       │
+           │      ├─ I2C Read START ─────►│ HAL_BUSY!
+           │      │  (hi2c1.Lock 이미 LOCKED)
+           │      │
+           └──────┘  ← STOP 미발생 (버스 Hang)</pre>
+      </div>
+
+      <h3 data-ko="✅ 해결: osMutex 기반 I2C 접근 보호" data-en="✅ Solution: osMutex-based I2C Access Protection">✅ 해결: osMutex 기반 I2C 접근 보호</h3>
+      <div class="code-block">
+        <div class="code-header"><span>I2C Mutex Pattern</span><span class="lang">C</span></div>
+        <pre>// hw.c — Mutex 생성
+osMutexId_t i2c1_mutex;
+void hwInit(void) {
+  i2c1_mutex = osMutexNew(NULL);
+}
+
+// gyro.c — 센서 읽기 시 Mutex 보호
+bool Gyro_Read(gyro_data_t *data) {
+  osMutexAcquire(i2c1_mutex, osWaitForever);
+
+  HAL_StatusTypeDef ret = HAL_I2C_Mem_Read(
+    &amp;hi2c1, MPU6050_ADDR &lt;&lt; 1,
+    ACCEL_XOUT_H, I2C_MEMADD_SIZE_8BIT,
+    raw, 14, 50);   // Timeout 50ms
+
+  osMutexRelease(i2c1_mutex);
+  return (ret == HAL_OK);
+}
+
+// mag.c — 동일한 Mutex 적용
+bool Mag_Read(mag_data_t *data) {
+  osMutexAcquire(i2c1_mutex, osWaitForever);
+
+  HAL_StatusTypeDef ret = HAL_I2C_Mem_Read(
+    &amp;hi2c1, HMC5883L_ADDR &lt;&lt; 1,
+    DATA_OUT_X_MSB, I2C_MEMADD_SIZE_8BIT,
+    raw, 6, 50);
+
+  osMutexRelease(i2c1_mutex);
+  return (ret == HAL_OK);
+}</pre>
+      </div>
+
+      <div class="result-card">
+        <h4 data-ko="📈 해결 결과" data-en="📈 Results">📈 해결 결과</h4>
+        <ul>
+          <li data-ko="I2C Hang 현상 완전 해소 (48시간 연속 동작 테스트 통과)" data-en="I2C Hang completely resolved (48-hour continuous operation test passed)">I2C Hang 현상 완전 해소 (48시간 연속 동작 테스트 통과)</li>
+          <li data-ko="HAL Timeout 50ms 설정으로 만약의 Hang에도 자동 복구" data-en="HAL Timeout 50ms ensures automatic recovery from any remaining hangs">HAL Timeout 50ms 설정으로 만약의 Hang에도 자동 복구</li>
+          <li data-ko="MPU6050 50Hz + HMC5883L 100Hz 갱신 주기 안정 유지" data-en="MPU6050 50Hz + HMC5883L 100Hz update rates maintained stably">MPU6050 50Hz + HMC5883L 100Hz 갱신 주기 안정 유지</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- ===== 04 고찰 및 느낀점 ===== -->
+    <section class="section" id="reflection">
+      <h2 data-ko="04 고찰 및 느낀점" data-en="04 Reflection">04 고찰 및 느낀점</h2>
+
+      <h3 data-ko="💡 기술적 고찰" data-en="💡 Technical Insights">💡 기술적 고찰</h3>
+      <ul>
+        <li data-ko="HAL 드라이버의 내부 Lock은 RTOS 환경에서 충분하지 않다. 반드시 osMutex 등 OS 레벨 동기화 메커니즘이 필요하다."
+            data-en="HAL driver's internal Lock is insufficient in RTOS environments. OS-level synchronization mechanisms like osMutex are essential.">HAL 드라이버의 내부 Lock은 RTOS 환경에서 충분하지 않다. 반드시 osMutex 등 OS 레벨 동기화 메커니즘이 필요하다.</li>
+        <li data-ko="Priority Inheritance 옵션을 적용하면 우선순위 역전 문제도 동시에 예방할 수 있다."
+            data-en="Applying Priority Inheritance option can simultaneously prevent priority inversion issues.">Priority Inheritance 옵션을 적용하면 우선순위 역전 문제도 동시에 예방할 수 있다.</li>
+        <li data-ko="타이밍 문제는 로그만으로 재현이 어렵다. 오실로스코프로 SDA/SCL 파형을 직접 확인하는 것이 가장 정확한 디버깅 방법이다."
+            data-en="Timing issues are difficult to reproduce with logs alone. Directly verifying SDA/SCL waveforms with an oscilloscope is the most accurate debugging method.">타이밍 문제는 로그만으로 재현이 어렵다. 오실로스코프로 SDA/SCL 파형을 직접 확인하는 것이 가장 정확한 디버깅 방법이다.</li>
+      </ul>
+
+      <h3 data-ko="📝 느낀점" data-en="📝 Lessons Learned">📝 느낀점</h3>
+      <p data-ko="이 경험을 통해 '동작하는 코드'와 '신뢰할 수 있는 코드'의 차이를 체감했습니다. 단일 Task에서는 문제없이 동작하던 I2C 드라이버가 멀티태스킹 환경에서는 예측 불가능한 Hang을 일으켰고, 이를 해결하기 위해 HAL의 내부 동작을 레지스터 수준까지 추적해야 했습니다. 방산·자동차 도메인에서 요구하는 '신뢰성'은 바로 이런 세밀한 검증 과정에서 나온다는 것을 배웠습니다."
+         data-en="Through this experience, I realized the difference between 'working code' and 'reliable code.' An I2C driver that worked perfectly in a single task caused unpredictable hangs in a multitasking environment. Resolving this required tracing HAL internals down to the register level. I learned that the 'reliability' demanded in defense and automotive domains comes from exactly this kind of meticulous verification.">
+        이 경험을 통해 '동작하는 코드'와 '신뢰할 수 있는 코드'의 차이를 체감했습니다. 단일 Task에서는 문제없이 동작하던 I2C 드라이버가 멀티태스킹 환경에서는 예측 불가능한 Hang을 일으켰고, 이를 해결하기 위해 HAL의 내부 동작을 레지스터 수준까지 추적해야 했습니다. 방산·자동차 도메인에서 요구하는 '신뢰성'은 바로 이런 세밀한 검증 과정에서 나온다는 것을 배웠습니다.
+      </p>
+
+      <h3 data-ko="🔗 관련 프로젝트" data-en="🔗 Related Project">🔗 관련 프로젝트</h3>
+      <p><a href="https://github.com/KCCI-Ottogi/Jimbal_IMU_STM32F411" target="_blank" style="color:var(--cyan);font-weight:700">GitHub: Jimbal_IMU_STM32F411 ↗</a></p>
+    </section>
+  </div>
+
+  <!-- Footer -->
+  <footer class="post-footer">
+    <a href="../blog.html">← Blog 목록</a>
+    <span>© 2026 Dev.Embedded</span>
+  </footer>
+
+  <!-- Language Toggle -->
+  <div class="lang-toggle" id="lang-toggle">
+    <button class="lang-btn active" data-lang="ko">KO</button>
+    <button class="lang-btn" data-lang="en">EN</button>
+  </div>
+
+  <script>
+    /* ==============================================
+       STICKY TAB NAV — Scroll Sync + Click Navigation
+    =============================================== */
+    const tabLinks = document.querySelectorAll('.tab-nav a');
+    const sections = document.querySelectorAll('.section');
+
+    // Scroll → 탭 활성화
+    const secObs = new IntersectionObserver(entries => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          const id = entry.target.id;
+          tabLinks.forEach(a => a.classList.toggle('active', a.dataset.section === id));
+        }
+      });
+    }, { threshold: 0.15, rootMargin: '-120px 0px -50% 0px' });
+
+    sections.forEach(s => secObs.observe(s));
+
+    // 탭 클릭 → 해당 섹션으로 스크롤
+    tabLinks.forEach(a => {
+      a.addEventListener('click', (e) => {
+        e.preventDefault();
+        const target = document.getElementById(a.dataset.section);
+        if (target) target.scrollIntoView({ behavior: 'smooth' });
+      });
+    });
+
+    /* ==============================================
+       LANGUAGE TOGGLE (KO ↔ EN)
+    =============================================== */
+    let currentLang = 'ko';
+
+    document.getElementById('lang-toggle').addEventListener('click', (e) => {
+      const btn = e.target.closest('.lang-btn');
+      if (!btn || btn.dataset.lang === currentLang) return;
+
+      currentLang = btn.dataset.lang;
+      document.querySelectorAll('.lang-btn').forEach(b =>
+        b.classList.toggle('active', b.dataset.lang === currentLang)
+      );
+
+      // data-ko / data-en 속성이 있는 모든 요소의 텍스트를 교체
+      document.querySelectorAll('[data-ko][data-en]').forEach(el => {
+        el.textContent = el.getAttribute(`data-${currentLang}`);
+      });
+    });
+  </script>
+</body>
+</html>

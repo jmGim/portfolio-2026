@@ -810,7 +810,7 @@
 
     .skill-grid {
       display: grid;
-      grid-template-columns: repeat(4, 1fr);
+      grid-template-columns: repeat(3, 1fr);
       gap: 16px;
       padding: 0 clamp(18px, 5vw, 72px);
       max-width: 1400px;
@@ -818,7 +818,7 @@
     }
 
     .skill-grid article {
-      padding: 28px;
+      padding: 24px 28px;
       border-radius: var(--r-sm);
       background: var(--bg-white);
       border: 1px solid var(--line);
@@ -833,8 +833,15 @@
     }
 
     .skill-grid h3 {
-      font-size: 17px;
-      margin-bottom: 10px
+      font-size: 13px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      color: var(--muted);
+      margin-bottom: 14px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
     }
 
     .skill-grid p {
@@ -843,6 +850,34 @@
       font-size: 14px;
       margin-bottom: 0
     }
+
+    /* Skill tag pills */
+    .skill-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+    .sk {
+      display: inline-flex;
+      padding: 5px 10px;
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 600;
+      background: rgba(14,165,233,.06);
+      color: var(--text);
+      border: 1px solid var(--line);
+      transition: all .2s;
+    }
+    .sk:hover { background: rgba(14,165,233,.12); border-color: rgba(14,165,233,.25); color: var(--cyan) }
+    .sk-cyan  { background: rgba(14,165,233,.08); color: var(--cyan); border-color: rgba(14,165,233,.2) }
+    .sk-green { background: rgba(16,185,129,.08); color: var(--green); border-color: rgba(16,185,129,.2) }
+    .sk-violet{ background: rgba(139,92,246,.08); color: var(--violet); border-color: rgba(139,92,246,.2) }
+    .sk-orange{ background: rgba(249,115,22,.08); color: var(--orange); border-color: rgba(249,115,22,.2) }
+    .sk-yellow{ background: rgba(234,179,8,.08);  color: #b45309;       border-color: rgba(234,179,8,.25) }
+
+    /* Award / License rows */
+    .award-row { display: flex; align-items: flex-start; gap: 8px; margin-bottom: 8px; font-size: 13px; color: var(--text-s); line-height: 1.5 }
+    .award-icon { flex-shrink: 0; font-size: 15px }
 
     /* =========================================
        9. CONTACT SECTION
@@ -941,6 +976,12 @@
       }
     }
 
+    @media(max-width:760px) {
+      .skill-grid {
+        grid-template-columns: 1fr
+      }
+    }
+
     @media(max-width:980px) {
       .hero {
         grid-template-columns: 1fr
@@ -968,9 +1009,8 @@
         display: flex
       }
 
-      .stats-section,
-      .skill-grid {
-        grid-template-columns: 1fr
+      .stats-section {
+        grid-template-columns: repeat(2, 1fr)
       }
 
       .sidebar-toc {
@@ -1112,22 +1152,113 @@ Data-driven Embedded SW Engineer
         <h2>실시간 시스템을 위한 기술 스택</h2>
       </div>
       <div class="skill-grid">
+
+        <!-- Language & Tools -->
         <article class="reveal-stagger">
-          <h3>MCU / RTOS</h3>
-          <p>STM32F411, ESP32 기반 펌웨어 개발. FreeRTOS(CMSIS-RTOS2) 6개 Task 설계, Binary Semaphore로 인터럽트 동기화, Mutex로 공유 자원 보호.</p>
+          <h3>🔤 Language</h3>
+          <div class="skill-tags">
+            <span class="sk sk-cyan">C</span>
+            <span class="sk sk-cyan">C++</span>
+            <span class="sk sk-cyan">Python</span>
+            <span class="sk">vi / Vim</span>
+            <span class="sk">Linux Shell</span>
+            <span class="sk">Verilog HDL</span>
+          </div>
         </article>
+
         <article class="reveal-stagger">
-          <h3>H/W Protocol &amp; Sensor</h3>
-          <p>I2C 멀티 디바이스(MPU6050+HMC5883L) 제어, UART DMA 기반 통신, Verilog 타이밍 분석, SPI/CAN(FD) 개념 이해.</p>
+          <h3>🛠 Dev Tools</h3>
+          <div class="skill-tags">
+            <span class="sk">VSCode</span>
+            <span class="sk">STM32CubeIDE</span>
+            <span class="sk sk-green">Git</span>
+            <span class="sk sk-green">GitHub</span>
+            <span class="sk sk-green">GitLab</span>
+            <span class="sk">Makefile</span>
+            <span class="sk">Qt6 / QtCreator</span>
+          </div>
         </article>
+
+        <!-- Protocols & Frameworks -->
         <article class="reveal-stagger">
-          <h3>OTA &amp; Bootloader</h3>
-          <p>Flash 4-Partition 설계, CRC32 이중 무결성 검증, 벡터 테이블 검증 후 Jump. ESP8266 AT 명령 기반 Wi-Fi 다운로드.</p>
+          <h3>📡 Protocol</h3>
+          <div class="skill-tags">
+            <span class="sk sk-cyan">UART</span>
+            <span class="sk sk-cyan">I2C</span>
+            <span class="sk sk-cyan">SPI</span>
+            <span class="sk sk-cyan">CAN / CAN-FD</span>
+            <span class="sk">Ethernet / TCP</span>
+            <span class="sk">MQTT</span>
+            <span class="sk">AT Command</span>
+          </div>
         </article>
+
         <article class="reveal-stagger">
-          <h3>Control &amp; Algorithm</h3>
-          <p>상보필터 센서 융합, PID 제어(Anti-Windup + LPF), Tilt-Compensated Yaw, 다항식 커브 피팅 오차 보정.</p>
+          <h3>🧩 Framework</h3>
+          <div class="skill-tags">
+            <span class="sk sk-violet">FreeRTOS</span>
+            <span class="sk sk-violet">CMSIS-RTOS2</span>
+            <span class="sk">HAL / LL Driver</span>
+            <span class="sk">Device Driver</span>
+            <span class="sk">Linux Kernel</span>
+            <span class="sk">OpenCV</span>
+            <span class="sk">YOLOv8</span>
+            <span class="sk">TensorFlow</span>
+          </div>
         </article>
+
+        <!-- Boards & Cloud -->
+        <article class="reveal-stagger">
+          <h3>🔌 Board &amp; MCU</h3>
+          <div class="skill-tags">
+            <span class="sk sk-cyan">STM32F411 (ST-Link)</span>
+            <span class="sk sk-cyan">ESP32 / ESP8266</span>
+            <span class="sk">Raspberry Pi</span>
+            <span class="sk">Jetson Nano</span>
+            <span class="sk">AVR / Arduino Uno</span>
+            <span class="sk">FPGA (Basys3)</span>
+          </div>
+        </article>
+
+        <article class="reveal-stagger">
+          <h3>☁️ Edge / Cloud</h3>
+          <div class="skill-tags">
+            <span class="sk sk-green">AWS IoT Core</span>
+            <span class="sk sk-green">IBM Watson IoT</span>
+            <span class="sk">Node-RED</span>
+            <span class="sk">Grafana</span>
+            <span class="sk">InfluxDB</span>
+            <span class="sk">MariaDB</span>
+          </div>
+        </article>
+
+        <!-- Awards -->
+        <article class="reveal-stagger">
+          <h3>🏆 Awards &amp; GPA</h3>
+          <div class="award-row"><span class="award-icon">🎓</span><span>학점 <strong>4.17/4.5</strong> — 성적장학금 7회 (50% 5회)</span></div>
+          <div class="award-row"><span class="award-icon">🥈</span><span>2023 총장배 로봇프로그래밍 (AI-EYE) <strong>2등상</strong></span></div>
+          <div class="award-row"><span class="award-icon">🥉</span><span>2019 한국통신학회 추계학술대회 <strong>은상</strong></span></div>
+        </article>
+
+        <!-- Licenses & English -->
+        <article class="reveal-stagger">
+          <h3>📜 Licenses</h3>
+          <div class="skill-tags" style="margin-bottom:12px">
+            <span class="sk sk-violet">정보처리기사</span>
+            <span class="sk sk-violet">임베디드기사</span>
+            <span class="sk sk-violet">컴퓨터시스템기사</span>
+            <span class="sk">컴퓨터활용능력 1급</span>
+            <span class="sk">ADsP</span>
+            <span class="sk">1종 보통</span>
+            <span class="sk sk-orange">태권도 4단</span>
+          </div>
+          <h3 style="margin-top:12px">🌐 English</h3>
+          <div class="skill-tags">
+            <span class="sk sk-yellow">TOEIC 860</span>
+            <span class="sk sk-yellow">OPIC IM2</span>
+          </div>
+        </article>
+
       </div>
     </section>
 
@@ -1558,6 +1689,26 @@ Data-driven Embedded SW Engineer
     // 모바일 메뉴 링크 클릭 시 메뉴 닫기
     mobileMenu.querySelectorAll('a').forEach(a => {
       a.addEventListener('click', () => {
+        hamburgerBtn.classList.remove('active');
+        mobileMenu.classList.remove('open');
+      });
+    });
+
+    /* ==============================================
+       SIDEBAR TOC 스무스 스크롤 피스
+       — href="#about" 등 않커 클릭 시 설정된 섹션으로 이동
+    =============================================== */
+    document.querySelectorAll('.toc-item, .sidebar-toc a, .nav a, .mobile-menu a').forEach(a => {
+      const href = a.getAttribute('href');
+      if (!href || !href.startsWith('#')) return;
+      a.addEventListener('click', (e) => {
+        const target = document.querySelector(href);
+        if (!target) return;
+        e.preventDefault();
+        const topbarH = document.querySelector('.topbar')?.offsetHeight || 64;
+        const y = target.getBoundingClientRect().top + window.scrollY - topbarH;
+        window.scrollTo({ top: y, behavior: 'smooth' });
+        // 모바일 메뉴도 닫기
         hamburgerBtn.classList.remove('active');
         mobileMenu.classList.remove('open');
       });

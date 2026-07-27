@@ -157,6 +157,18 @@
     .blog-footer a { color: var(--text-s); transition: color .2s }
     .blog-footer a:hover { color: var(--cyan) }
 
+    /* ===== Language Toggle ===== */
+    .lang-toggle { display: flex; border-radius: 10px; overflow: hidden; border: 1px solid var(--line); box-shadow: var(--sh-sm); margin-left: auto }
+    .lang-btn { padding: 7px 14px; font-size: 12px; font-weight: 700; background: var(--bg-white); color: var(--text-s); transition: all .2s }
+    .lang-btn.active { background: var(--cyan); color: #fff }
+    .lang-btn:hover:not(.active) { background: rgba(14,165,233,.05) }
+
+    /* ===== Snippet Category Chips ===== */
+    .snippet-cats { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 14px }
+    .snippet-cat-btn { padding: 5px 12px; border-radius: 8px; font-size: 12px; font-weight: 600; background: var(--bg-white); color: var(--text-s); border: 1px solid var(--line); transition: all .2s }
+    .snippet-cat-btn:hover { border-color: var(--cyan); color: var(--cyan) }
+    .snippet-cat-btn.active { background: rgba(14,165,233,.08); color: var(--cyan); border-color: rgba(14,165,233,.2) }
+
     @media(max-width:800px) {
       .main { grid-template-columns: 1fr }
       .sidebar { position: static }
@@ -182,13 +194,18 @@
         <a href="index.html#skills">Stack</a>
         <a href="index.html#contact">Contact</a>
       </div>
+      <div class="lang-toggle" id="lang-toggle">
+        <button class="lang-btn active" data-lang="ko">KO</button>
+        <button class="lang-btn" data-lang="en">EN</button>
+      </div>
     </div>
   </nav>
 
   <!-- Hero -->
   <header class="hero">
-    <h1>Deep Dive into<br><span class="gradient">Low-Level Systems</span></h1>
-    <p>
+    <h1 data-ko="Deep Dive into<br><span class='gradient'>Low-Level Systems</span>" data-en="Deep Dive into<br><span class='gradient'>Low-Level Systems</span>">Deep Dive into<br><span class="gradient">Low-Level Systems</span></h1>
+    <p data-ko="하드웨어의 밑바닥 전기적 특성부터 상위 OS의 아키텍처까지.<br>데이터시트와 오실로스코프로 검증하는 임베디드 SW 엔지니어링 기록."
+       data-en="From low-level electrical characteristics to OS architecture.<br>Embedded SW engineering records verified by datasheets and oscilloscope.">
       하드웨어의 밑바닥 전기적 특성부터 상위 OS의 아키텍처까지.<br>
       데이터시트와 오실로스코프로 검증하는 임베디드 SW 엔지니어링 기록.
     </p>
@@ -257,12 +274,15 @@
       {
         id: 1,
         title: "I2C 버스 Hang 현상 분석: MPU6050 + HMC5883L 동시 접근 트러블슈팅",
+        title_en: "I2C Bus Hang Analysis: MPU6050 + HMC5883L Concurrent Access Troubleshooting",
         excerpt: "FreeRTOS 환경에서 두 센서가 동일 I2C1 버스를 경쟁적으로 접근할 때 발생하는 HAL_BUSY 현상의 원인과 Mutex 기반 해결 기록.",
+        excerpt_en: "Root cause analysis and Mutex-based solution for HAL_BUSY when two sensors competitively access the same I2C1 bus in FreeRTOS.",
         category: "troubleshooting",
         level: "Advanced",
-        date: "2026. 07. 20",         // ← 날짜 직접 설정
+        date: "2026. 07. 20",
         readTime: "10 min",
         tags: ["I2C", "FreeRTOS", "Mutex", "MPU6050", "HMC5883L"],
+        url: "posts/i2c-mutex-troubleshooting.html",  // ← Ctrl+클릭 시 열리는 페이지
         // 포스트 상세 내용 (모달에 표시)
         sections: [
           { type: "h3", text: "🔍 문제 상황" },
@@ -528,6 +548,7 @@ float pid_update(float setpoint, float current) {
               code: sec.code,
               desc: `📄 출처: "${post.title}"`,
               tags: post.tags.slice(0, 3),
+              category: post.category,   // ← 카테고리 필터용
               postId: post.id
             });
           }
@@ -664,8 +685,25 @@ float pid_update(float setpoint, float current) {
     function renderSnippets() {
       const snippets = collectSnippets();
       const q = searchQuery.toLowerCase();
-      const filtered = snippets.filter(s => !q || s.title.toLowerCase().includes(q) || s.tags.some(t => t.toLowerCase().includes(q)));
+
+      // 카테고리 필터 (sidebar 카테고리와 동기화)
+      const filtered = snippets.filter(s => {
+        const catMatch = activeCategory === 'all' || s.category === activeCategory;
+        const searchMatch = !q || s.title.toLowerCase().includes(q) || s.tags.some(t => t.toLowerCase().includes(q));
+        return catMatch && searchMatch;
+      });
+
+      // 스니펫 고유 카테고리 목록
+      const allCats = [...new Set(snippets.map(s => s.category))];
       let html = `<div class="feed-header"><h2>Code Snippets</h2><span>${filtered.length} snippets (포스트에서 자동 수집)</span></div>`;
+      html += `<div class="snippet-cats">`;
+      html += `<button class="snippet-cat-btn ${activeCategory==='all'?'active':''}" data-scat="all">All</button>`;
+      allCats.forEach(cat => {
+        const label = CATEGORIES.find(c => c.id === cat)?.label || cat;
+        html += `<button class="snippet-cat-btn ${activeCategory===cat?'active':''}" data-scat="${cat}">${label}</button>`;
+      });
+      html += `</div>`;
+
       if (!filtered.length) {
         html += `<div class="empty-state"><p>검색 결과가 없습니다.</p></div>`;
       } else {
@@ -702,10 +740,9 @@ float pid_update(float setpoint, float current) {
             const post = POSTS.find(p => p.id === postId);
             if (!post) return;
 
-            // Ctrl+Click → 새 페이지로 이동 (상세 페이지)
-            if (e.ctrlKey || e.metaKey) {
-              // 별도 상세 페이지가 없으면 모달로 대체
-              openPostModal(post);
+            // Ctrl+Click → 새 페이지로 이동
+            if ((e.ctrlKey || e.metaKey) && post.url) {
+              window.open(post.url, '_blank');
               return;
             }
             // 일반 클릭 → 모달 열기
@@ -713,7 +750,36 @@ float pid_update(float setpoint, float current) {
           });
         });
       }
+      // 스니펫 카테고리 버튼 이벤트 바인딩
+      if (activeTab === 'snippets') {
+        feed.querySelectorAll('.snippet-cat-btn').forEach(btn => {
+          btn.addEventListener('click', () => {
+            activeCategory = btn.dataset.scat;
+            render();
+          });
+        });
+      }
     }
+
+    /* ========================================
+       LANGUAGE TOGGLE
+    ======================================== */
+    let currentLang = 'ko';
+
+    document.getElementById('lang-toggle').addEventListener('click', (e) => {
+      const btn = e.target.closest('.lang-btn');
+      if (!btn || btn.dataset.lang === currentLang) return;
+      currentLang = btn.dataset.lang;
+      document.querySelectorAll('.lang-btn').forEach(b =>
+        b.classList.toggle('active', b.dataset.lang === currentLang)
+      );
+      // data-ko / data-en 속성 교체 (히어로 섹션)
+      document.querySelectorAll('[data-ko][data-en]').forEach(el => {
+        el.innerHTML = el.getAttribute(`data-${currentLang}`);
+      });
+      // 포스트 제목/요약이 영어 필드가 있는 경우 재렌더링
+      render();
+    });
 
     /* ========================================
        INIT
