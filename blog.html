@@ -184,12 +184,13 @@
   <!-- Navbar -->
   <nav class="navbar">
     <div class="navbar-inner">
-      <a class="navbar-brand" href="index.html">
+      <a class="navbar-brand" href="index.html" title="Portfolio로 돌아가기">
         <span class="icon">&lt;/&gt;</span>
         <span>Dev<span class="accent">.Embedded</span></span>
       </a>
+      <!-- Tech Blog 현재 위치 표시 -->
       <div class="navbar-links">
-        <a href="index.html">Portfolio</a>
+        <a href="index.html" style="display:flex;align-items:center;gap:4px;font-size:13px">← Portfolio</a>
         <a href="#" class="active">Tech Blog</a>
         <a href="index.html#skills">Stack</a>
         <a href="index.html#contact">Contact</a>
@@ -563,6 +564,7 @@ float pid_update(float setpoint, float current) {
     let activeCategory = "all";
     let activeTab = "posts";
     let searchQuery = "";
+    let currentLang = 'ko';   // KO/EN 언어 상태 — openPostModal, renderPosts에서 참조
 
     /* ========================================
        MODAL
@@ -573,7 +575,9 @@ float pid_update(float setpoint, float current) {
     const closeBtn = document.getElementById('modal-close');
 
     function openPostModal(post) {
-      modalTitle.textContent = post.title;
+      // EN 모드 대응: 제목은 title_en 우선
+      const title = (currentLang === 'en' && post.title_en) ? post.title_en : post.title;
+      modalTitle.textContent = title;
       let html = `
         <div class="tag-list">${post.tags.map(t => `<span class="tag">${t}</span>`).join('')}</div>
         <p style="color:var(--muted);font-size:13px;margin-bottom:20px">
@@ -592,6 +596,10 @@ float pid_update(float setpoint, float current) {
             html += `<pre><code>${escapeHtml(sec.code)}</code></pre>`;
           }
         });
+      }
+      // EN 모드: 포스트 하단에 번역 안내
+      if (currentLang === 'en') {
+        html += `<p style="margin-top:24px;padding:12px 16px;background:rgba(14,165,233,.05);border-radius:10px;font-size:13px;color:var(--muted)">📝 Full English translation is available in the dedicated post page (Ctrl+Click the card).</p>`;
       }
       modalBody.innerHTML = html;
       overlay.classList.add('active');
@@ -645,9 +653,13 @@ float pid_update(float setpoint, float current) {
       const catLabel = CATEGORIES.find(c => c.id === activeCategory)?.label || "All";
       let html = `<div class="feed-header"><h2>${activeCategory === 'all' ? 'Latest Posts' : catLabel}</h2><span>${filtered.length} posts</span></div>`;
       if (!filtered.length) {
-        html += `<div class="empty-state"><p>검색 결과가 없습니다.</p></div>`;
+        html += `<div class="empty-state"><p>${currentLang === 'en' ? 'No results found.' : '검색 결과가 없습니다.'}</p></div>`;
       } else {
         filtered.forEach(p => {
+          // EN 모드일 때 title_en / excerpt_en 우선 사용
+          const title   = (currentLang === 'en' && p.title_en)   ? p.title_en   : p.title;
+          const excerpt = (currentLang === 'en' && p.excerpt_en) ? p.excerpt_en : p.excerpt;
+          const ctrlHint = p.url ? (currentLang === 'en' ? ' (Ctrl+Click: new page)' : ' (Ctrl+클릭: 새 탭)') : '';
           html += `
             <article class="post-card" data-post-id="${p.id}">
               <div class="post-meta">
@@ -655,11 +667,11 @@ float pid_update(float setpoint, float current) {
                 <span class="meta-text">⏱ ${p.readTime}</span>
                 <span class="meta-text">${p.date}</span>
               </div>
-              <h3 class="post-title">${p.title}</h3>
-              <p class="post-excerpt">${p.excerpt}</p>
+              <h3 class="post-title">${title}</h3>
+              <p class="post-excerpt">${excerpt}</p>
               <div class="post-footer">
                 <div class="post-tags">${p.tags.map(t => `<span class="post-tag">#${t}</span>`).join('')}</div>
-                <span class="read-more">Read Article →</span>
+                <span class="read-more">Read Article${ctrlHint} →</span>
               </div>
             </article>`;
         });
@@ -764,7 +776,7 @@ float pid_update(float setpoint, float current) {
     /* ========================================
        LANGUAGE TOGGLE
     ======================================== */
-    let currentLang = 'ko';
+    // currentLang 은 STATE 섹션에서 선언됨
 
     document.getElementById('lang-toggle').addEventListener('click', (e) => {
       const btn = e.target.closest('.lang-btn');
@@ -777,7 +789,7 @@ float pid_update(float setpoint, float current) {
       document.querySelectorAll('[data-ko][data-en]').forEach(el => {
         el.innerHTML = el.getAttribute(`data-${currentLang}`);
       });
-      // 포스트 제목/요약이 영어 필드가 있는 경우 재렌더링
+      // 포스트 카드 재렌더링 (title_en / excerpt_en 반영)
       render();
     });
 
