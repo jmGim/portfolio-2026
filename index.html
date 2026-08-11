@@ -1368,22 +1368,155 @@ Data-driven Embedded SW Engineer
     =============================================== */
     const projects = {
       gimbal: {
-        title: "STM32 3축 스마트 짐벌",
-        subtitle: "멀티 MCU 기반 객체 추적 및 RTOS 안정화 시스템",
+        title: "STM32 기반 3축 짐벌 제어 시스템",
+        subtitle: "RTOS 아키텍처 기반 실시간 자세 제어 및 Fail-Safe 설계",
         image: "images/1.STM32_3Axis_Gimbal_System_img.png",
-        brief: "3축 객체 추적 RTOS 짐벌 시스템",
+        brief: "FreeRTOS 6-Task / Sensor Fusion / Fail-Safe",
         num: 1,
-        tags: ["STM32F411", "FreeRTOS", "MPU6050", "PID", "SPI/UART"],
-        summary: "영상 처리(ESP32)와 자세 제어(STM32)를 분리하여 병목을 해결한 3축 짐벌입니다. H/W 인터페이스 설계부터 RTOS 기반 멀티 태스킹 최적화까지 구현했습니다.",
+        tags: ["STM32F411", "FreeRTOS", "I2C", "UART", "Sensor Fusion", "HAL"],
+        period: "202X.XX ~ 202X.XX",
+        target: "임베디드 SW 엔지니어 (차량 전장 및 방산 도메인)",
+        hw: "STM32F411, MPU6050(6축 IMU), HMC5883L(3축 지자기), SG90 Servo ×3",
+        summary: "다축 센서(IMU, 지자기) 데이터를 융합하여 기체의 수평을 실시간으로 유지하는 3축 짐벌 제어 시스템. 방산 및 전장 시스템에서 요구하는 '실시간성'과 '안정성(Fail-Safe)'을 확보하기 위해 FreeRTOS 기반 6개 Task를 분리하고, I2C 통신 충돌 및 UART 병목 현상을 하드웨어 레벨에서 트러블슈팅했습니다.",
         role: [
-          "MPU6050, HMC5883L 센서 융합 및 칼만 필터, LPF, PID 제어로 서보모터 진동 억제",
-          "FreeRTOS 도입: Task 우선순위 및 Mutex/Semaphore 타이밍 조절을 통한 교착상태 해결"
+          "Layered Architecture 기반 펌웨어 설계 (Driver → Service → AP 분리)",
+          "MPU6050, HMC5883L I2C 통신 드라이버 및 상보 필터(Sensor Fusion) 구현",
+          "FreeRTOS Task 스케줄링 및 자원 동기화(Semaphore, Mutex) 설계",
+          "서보 모터 PWM 미세 제어 및 지터링(Jittering) 개선"
         ],
-        architecture: ["ESP32-CAM Vision Edge", "STM32 Router & Display", "STM32 Stabilizer", "SG90 3축 서보모터"],
+        roleNote: "※ 비전 카메라(ESP32-CAM) 객체 추적 및 통신 연동부는 타 팀원 담당으로 본 기술서에서는 제외함.",
+        architecture: ["ESP32-CAM Vision Edge", "STM32 Router & Display", "STM32 Stabilizer (FreeRTOS 6-Task)", "SG90 3축 서보모터"],
+        // === 핵심 구현 섹션 ===
+        detailSections: [
+          {
+            heading: "⚙️ 2.1 I2C 버스 공유를 위한 RTOS 동기화",
+            desc: "하나의 I2C 버스(I2C1)를 2개 센서가 공유하는 환경에서 통신 충돌을 막고 CPU 점유율을 최적화했습니다.",
+            bullets: [
+              "<strong>MPU6050 (Event-Driven)</strong> — 폴링 방식을 배제하고, 센서 내부 샘플링(50Hz) 완료 시 EXTI 핀(PA4)으로 인터럽트 발생. ISR에서 Semaphore만 릴리즈 → OS 스케줄러가 gyroSystemTask를 깨우는 지연 인터럽트 처리 설계.",
+              "<strong>HMC5883L (Time-Driven)</strong> — 인터럽트 핀이 없는 모듈 특성상 50ms 주기 폴링. HAL 내부 하드웨어 Lock 활용으로 두 Task 간 버스 쟁탈 안전 중재."
+            ],
+            code: `// [Event-Driven IMU Task — gyro_ap.c]
+void gyroSystemTask(void *argument) {
+    uint32_t last_calc_tick = osKernelGetTickCount();
+    while (1) {
+        // ISR에서 세마포어 릴리즈까지 Blocking 대기
+        // → CPU 점유율 최소화
+        if (imu_is_ok() && GyroReadySemHandle != NULL) {
+            if (osSemaphoreAcquire(GyroReadySemHandle, 
+                                    osWaitForever) == osOK) {
+                uint32_t now = osKernelGetTickCount();
+                float dt = (now - last_calc_tick) / 1000.0f;
+                last_calc_tick = now;
+
+                if (!imu_update_math(dt)) {
+                    cliPrintf("\\r\\n[ALARM] Sensor Disconnected!\\r\\n");
+                    osDelay(100);
+                    continue; // Fail-Safe: 에러 시 시스템 멈춤 방지
+                }
+            }
+        } else {
+            osDelay(10);
+        }
+    }
+}`,
+            codeLang: "C"
+          },
+          {
+            heading: "📐 2.2 하드웨어 FPU 활용 Sensor Fusion (상보 필터 + 틸트 보정)",
+            desc: "자이로의 저주파 드리프트와 가속도계의 고주파 노이즈를 상호 보완하는 상보 필터를 적용하고, 기울어진 지자기 벡터를 회전 행렬로 수평면에 투영하는 틸트 보정을 구현했습니다. STM32F411의 하드웨어 FPU를 활용하여 atan2f, sinf 등 부동소수점 연산을 단 몇 클럭에 처리합니다.",
+            code: `// [상보 필터 + 지자기 틸트 보정 — gyro_service.c]
+static void IMU_ComputeAngles_Service(
+    Gyro_Data_t *imu, Mag_Data_t *mag, float dt) {
+    // 1. 가속도계 절대 각도
+    float acc_roll = atan2f((float)imu->accel_y, 
+                            (float)imu->accel_z) * RAD_TO_DEG;
+    float gyro_rate_x = (float)imu->gyro_x / GYRO_SCALE;
+
+    // 2. 상보 필터 (자이로 96% + 가속도 4% 신뢰)
+    imu->roll = IMU_ALPHA * (imu->roll + gyro_rate_x * dt)
+              + (1.0f - IMU_ALPHA) * acc_roll;
+
+    // 3. 지자계 틸트 보정 (기울어진 벡터 → 수평 투영)
+    if (mag != NULL) {
+        float roll_rad  = imu->roll  / RAD_TO_DEG;
+        float pitch_rad = imu->pitch / RAD_TO_DEG;
+
+        float mag_x_comp = mag->mag_x * cosf(pitch_rad)
+                         + mag->mag_z * sinf(pitch_rad);
+        float mag_y_comp = mag->mag_x * sinf(roll_rad) * sinf(pitch_rad)
+                         + mag->mag_y * cosf(roll_rad)
+                         - mag->mag_z * sinf(roll_rad) * cosf(pitch_rad);
+
+        // 절대 방위각 → 영점 기준 상대 각도 산출
+        float abs_yaw = atan2f(-mag_y_comp, mag_x_comp) * RAD_TO_DEG;
+    }
+}`,
+            codeLang: "C"
+          },
+          {
+            heading: "🔩 2.3 서보 모터 지터링(Jittering) 개선",
+            desc: "초기 구현 시 모터가 끊기며 이동하는 지터링 현상 발생. 원인: 각도를 uint8_t(정수)로 처리하여 CCR 레지스터에 계단식 값이 전달됨.",
+            bullets: [
+              "<strong>float 전면 전환</strong> — 제어 변수를 float형으로 수정, 타이머 펄스 폭을 소수점 단위까지 미세 분할.",
+              "<strong>LPF 보간</strong> — 목표 각도와 현재 각도의 오차가 0.05° 이상일 때만 k_gain을 곱해 이동하는 저역통과필터 형태의 보간 로직 추가."
+            ],
+            code: `// [부드러운 보간 제어 — gimbal_control.c]
+void gimbalExecuteCombinedControl(void) {
+    float imu_r, imu_p, imu_y;
+    gyroServiceGetLatestAngles(&imu_r, &imu_p, &imu_y);
+
+    // 외부 기울기에 대한 반대 보상 각도 계산
+    float final_roll  = servoGetInitAngle(0) + (imu_r * -1.0f);
+    float final_pitch = servoGetInitAngle(1) + (imu_p * -1.0f);
+
+    // 소프트웨어 리미트 (하드웨어 보호)
+    if (final_roll  < 10.0f)  final_roll  = 10.0f;
+    if (final_roll  > 170.0f) final_roll  = 170.0f;
+
+    // float 타겟 전달 (내부에서 미세 펄스 계산)
+    servoSetTarget(0, final_roll,  0.15f); // k_gain
+    servoSetTarget(1, final_pitch, 0.15f);
+    servoSmoothUpdate(); // (목표-현재)*k_gain → PWM 출력
+}`,
+            codeLang: "C"
+          }
+        ],
+        // === 트러블슈팅 ===
         troubleshooting: [
-          "[분석]Mutex 및 Semaphore로 I2C 점유시간 위한 타이밍 분석",
-          "[해결] RTOS 환경에서 센서 데이터 로깅 시 CLI 화면 멈춤 및 각도 값 출력 오류를 Semaphore 동기화 튜닝으로 해결"
+          "[OS 안정성] 센서 초기화 실패로 인한 Interrupt Storm 및 데드락 해결",
+          "[통신 병목] 고속 텍스트 출력 시 UART TX 병목 및 Task Starvation 현상"
         ],
+        troubleDetail: [
+          {
+            badge: "OS 안정성",
+            title: "센서 초기화 실패 → Interrupt Storm + 데드락",
+            symptom: "센서 I2C 통신선이 불안정할 때, 전체 시스템(LED, CLI)이 완전 먹통 → Idle Task 빠짐.",
+            cause: [
+              "센서 전원이 정상 켜지지 않아 EXTI 핀(PA4)이 Floating 상태 → 노이즈를 스펀지처럼 흡수해 초당 수만 번 인터럽트 폭풍 발생",
+              "EXTI 인터럽트 우선순위가 FreeRTOS 권장 수치보다 높게 설정 → 시스템 타이머 꼬임 (Hard Fault)"
+            ],
+            solution: [
+              "CubeMX EXTI 핀에 하드웨어 Pull-down 저항 설정 → 노이즈 억제",
+              "NVIC EXTI 우선순위를 5로 낮춤 → FreeRTOS API 충돌 방지",
+              "I2C 타임아웃 시 시스템 멈춤 방지: 에러 플래그 후 <code>imu on</code> 명령으로 I2C 버스 수동 리셋(SCL 9-clock toggle) + 재초기화 Fail-Safe 로직"
+            ]
+          },
+          {
+            badge: "통신 병목",
+            title: "고속 텍스트 출력 시 UART TX 병목 → Task Starvation",
+            symptom: "50Hz(20ms) 주기로 IMU 데이터를 터미널에 텍스트 출력(imu on 20) 시, Ctrl+C 등 사용자 제어 명령이 전혀 입력 안 됨.",
+            cause: [
+              "UART printf가 Blocking 방식 → CPU를 길게 점유",
+              "CLI 입력 Task(defaultTask)가 스케줄러로부터 실행 기회를 박탈당하는 Task 기아 상태(Starvation)"
+            ],
+            solution: [
+              "CLI 입력 Task 우선순위를 <strong>AboveNormal</strong>로 최상위 상향 → 긴급 제어권(비상정지 등) 확보",
+              "텍스트 모드 출력 시 최소 주기를 100ms로 강제 제한하는 방어 코드 삽입",
+              "고속 데이터가 필요할 경우 바이너리 패킷(<code>mon on</code>)을 사용하도록 시스템 이원화"
+            ]
+          }
+        ],
+        capabilitySummary: "단순한 기능 구현에 그치지 않고, 오실로스코프와 디버거를 활용하여 타이밍 이슈와 OS 스케줄링 문제를 하드웨어 레벨에서 분석했습니다. 방산 및 차량용 제어기에서 가장 중요시하는 <strong>'어떤 상황에서도 시스템이 멈추지 않는 방어적 설계(Fail-Safe)'</strong> 원칙을 코드에 녹여낼 수 있습니다.",
         links: [["GitHub", "https://github.com/KCCI-Ottogi/Jimbal_IMU_STM32F411"]]
       },
       rhythm: {
@@ -1627,7 +1760,7 @@ Data-driven Embedded SW Engineer
     const closeBtn = document.getElementById('modal-close');
 
     function renderProject(p) {
-      return `
+      let html = `
         <div class="modal-hero">
           <div>
             <p class="eyebrow">${p.subtitle}</p>
@@ -1636,15 +1769,73 @@ Data-driven Embedded SW Engineer
             <p>${p.summary}</p>
           </div>
           <div class="modal-image"><img src="${p.image}" alt="${p.title}"></div>
-        </div>
-        <h3>💼 담당 역할 / 구현 포인트</h3>
-        <ul>${p.role.map(r => `<li>${r}</li>`).join('')}</ul>
-        <h3>🏗️ 시스템 구성</h3>
-        <ul>${p.architecture.map(a => `<li>${a}</li>`).join('')}</ul>
-        <h3>🔧 트러블슈팅 / 오차 검증 경험</h3>
-        <ul>${p.troubleshooting.map(t => `<li>${formatTS(t)}</li>`).join('')}</ul>
-        <div class="link-row">${p.links.map(([l, u]) => `<a href="${u}" target="_blank" rel="noreferrer">${l} ↗</a>`).join('')}</div>
-      `;
+        </div>`;
+
+      /* 메타 정보 카드 (기간, H/W 등) */
+      if (p.period || p.hw || p.target) {
+        html += `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;margin:20px 0 8px">`;
+        if (p.period) html += `<div style="padding:14px 16px;border-radius:12px;background:var(--bg);border:1px solid var(--line)"><div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:3px">기간</div><div style="font-size:13px;font-weight:600">${p.period}</div></div>`;
+        if (p.hw) html += `<div style="padding:14px 16px;border-radius:12px;background:var(--bg);border:1px solid var(--line)"><div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:3px">하드웨어</div><div style="font-size:13px;font-weight:600">${p.hw}</div></div>`;
+        if (p.target) html += `<div style="padding:14px 16px;border-radius:12px;background:var(--bg);border:1px solid var(--line)"><div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:3px">지원 직무</div><div style="font-size:13px;font-weight:600">${p.target}</div></div>`;
+        html += `</div>`;
+      }
+
+      /* 담당 역할 */
+      html += `<h3>💼 담당 역할</h3>`;
+      html += `<ul>${p.role.map(r => `<li>${r}</li>`).join('')}</ul>`;
+      if (p.roleNote) html += `<p style="font-size:12px;color:var(--muted);margin-top:4px">${p.roleNote}</p>`;
+
+      /* 시스템 구성 */
+      html += `<h3>🏗️ 시스템 구성</h3>`;
+      html += `<ul>${p.architecture.map(a => `<li>${a}</li>`).join('')}</ul>`;
+
+      /* 핵심 구현 섹션 (detailSections) */
+      if (p.detailSections && p.detailSections.length) {
+        html += `<h3 style="margin-top:32px;font-size:18px;border-bottom:2px solid var(--line);padding-bottom:10px">📌 핵심 구현 및 동작 원리</h3>`;
+        p.detailSections.forEach(sec => {
+          html += `<h3 style="font-size:15px;margin-top:24px">${sec.heading}</h3>`;
+          html += `<p style="color:var(--text-s);font-size:14px;line-height:1.7">${sec.desc}</p>`;
+          if (sec.bullets) {
+            html += `<ul>${sec.bullets.map(b => `<li>${b}</li>`).join('')}</ul>`;
+          }
+          if (sec.code) {
+            html += `<pre style="background:#f1f5f9;border:1px solid var(--line);border-radius:12px;padding:16px 20px;font-family:'JetBrains Mono',monospace;font-size:12px;line-height:1.65;overflow-x:auto;margin:12px 0"><code>${escapeHtml(sec.code)}</code></pre>`;
+          }
+        });
+      }
+
+      /* 트러블슈팅 (상세) */
+      if (p.troubleDetail && p.troubleDetail.length) {
+        html += `<h3 style="margin-top:32px;font-size:18px;border-bottom:2px solid var(--line);padding-bottom:10px">🔧 트러블 슈팅 (Troubleshooting)</h3>`;
+        p.troubleDetail.forEach(td => {
+          html += `
+            <div style="margin:16px 0;padding:20px;border-radius:14px;background:var(--bg);border:1px solid var(--line)">
+              <div style="margin-bottom:10px"><span class="ts-badge" style="background:rgba(14,165,233,.1);color:var(--cyan)">${td.badge}</span><strong style="font-size:15px">${td.title}</strong></div>
+              <p style="font-size:13px;color:var(--text-s);margin-bottom:10px"><strong style="color:var(--text)">증상:</strong> ${td.symptom}</p>
+              <p style="font-size:13px;color:var(--text-s);margin-bottom:6px"><strong style="color:var(--text)">원인 분석:</strong></p>
+              <ul style="margin-bottom:10px">${td.cause.map(c => `<li style="font-size:13px">${c}</li>`).join('')}</ul>
+              <p style="font-size:13px;color:var(--text-s);margin-bottom:6px"><strong style="color:var(--green)">해결 및 개선:</strong></p>
+              <ul>${td.solution.map(s => `<li style="font-size:13px">${s}</li>`).join('')}</ul>
+            </div>`;
+        });
+      } else {
+        /* 기존 프로젝트용 단순 트러블슈팅 */
+        html += `<h3>🔧 트러블슈팅 / 오차 검증 경험</h3>`;
+        html += `<ul>${p.troubleshooting.map(t => `<li>${formatTS(t)}</li>`).join('')}</ul>`;
+      }
+
+      /* 역량 요약 */
+      if (p.capabilitySummary) {
+        html += `<div style="margin:24px 0;padding:18px 20px;border-radius:14px;background:linear-gradient(135deg,rgba(14,165,233,.04),rgba(16,185,129,.04));border:1px solid rgba(14,165,233,.12)"><p style="font-size:14px;line-height:1.7;color:var(--text-s);margin:0"><strong style="color:var(--text)">💡 개인 역량 요약:</strong> ${p.capabilitySummary}</p></div>`;
+      }
+
+      /* 링크 */
+      html += `<div class="link-row">${p.links.map(([l, u]) => `<a href="${u}" target="_blank" rel="noreferrer">${l} ↗</a>`).join('')}</div>`;
+      return html;
+    }
+
+    function escapeHtml(s) {
+      return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
     }
 
     function renderMatrix() {
