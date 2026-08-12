@@ -524,6 +524,85 @@ float pid_update(float setpoint, float current) {
             "Anti-Windup: 타겟 상실 후 복귀 시 오버슈트 80% 감소"
           ]}
         ]
+      },
+      {
+        id: 6,
+        title: "FPGA 100MHz 비동기 노이즈 → 1-bit Shift 에러 해결: 2-Stage Synchronizer + FSM 단일 카운터",
+        title_en: "FPGA 100MHz Async Noise → 1-bit Shift Error Fix: 2-Stage Synchronizer + Single-Counter FSM",
+        excerpt: "DHT11 습도가 130, 178 등 물리적 한계를 초과하는 쓰레기 값으로 수신된 원인: 점퍼선 RC 지연 + FSM 이중 카운터 타이밍 깨짐. 2-Stage Synchronizer와 단일 카운터 FSM으로 해결.",
+        excerpt_en: "Humidity readings exceeded physical limits (130, 178). Root cause: jumper-wire RC delay + dual-counter FSM timing break. Fixed with 2-Stage Synchronizer and single-counter FSM.",
+        category: "troubleshooting",
+        level: "Expert",
+        date: "2026. 08. 10",
+        readTime: "12 min",
+        tags: ["Verilog", "FPGA", "FSM", "DHT11", "Metastability", "Synchronizer"],
+        sections: [
+          { type: "h3", text: "🔍 문제 상황" },
+          { type: "p", text: "Basys3 FPGA(100MHz)에서 DHT11 온습도 센서를 구동할 때, 습도 데이터가 물리적 한계치 100%를 초과한 값(130, 178 등)으로 수신되며 통신이 간헐적으로 끊김." },
+          { type: "h3", text: "📊 원인 분석" },
+          { type: "ul", items: [
+            "외부 점퍼선의 RC 지연(Delay)으로 DHT11의 LOW 신호가 늘어져, 100MHz FPGA가 비트 '0'(28us)을 '1'(70us)로 잘못 샘플링 → 1-bit Shift",
+            "메인 FSM 내부에서 대기용 카운터와 측정용 카운터를 이중으로 혼용 → 상태 전이 시 타이밍 동기화 깨짐",
+            "비동기 외부 신호(dht11_data)가 FPGA 내부 동기 클럭과 직접 만나 Metastability 발생"
+          ]},
+          { type: "h3", text: "✅ 해결: 2-Stage Synchronizer + FSM 단일 카운터" },
+          { type: "code", lang: "Verilog", title: "2-Stage Synchronizer", code: `// 비동기 외부 신호를 안전하게 동기화
+reg dht_sync_1, dht_sync_2;
+always @(posedge clk) begin
+    dht_sync_1 <= dht11_data;   // 1단계: 메타스테빌리티 흡수
+    dht_sync_2 <= dht_sync_1;   // 2단계: 안정된 동기 신호
+end
+wire dht_safe = dht_sync_2;    // 이후 FSM에서 이 신호만 사용` },
+          { type: "p", text: "FSM 카운터를 '무조건 1us마다 증가, Edge 이벤트 시에만 r_wait_cnt <= 0으로 리셋'하는 단일 카운터 구조로 전면 개편하여 타이밍 안정성 확보." },
+          { type: "h3", text: "📈 결과" },
+          { type: "ul", items: [
+            "습도 100% 초과 쓰레기 값 완전 해소",
+            "Checksum(CRC) 검증 통과율 100% 달성",
+            "오실로스코프로 40bit 파형과 FPGA 레지스터 값 교차 검증 완료"
+          ]}
+        ]
+      },
+      {
+        id: 7,
+        title: "FPGA에서 나눗셈 연산자(/, %) 사용 금지 — Setup Time Violation과 UART 데드락",
+        title_en: "Why You Must Avoid Division Operators in FPGA: Setup Time Violation and UART Deadlock",
+        excerpt: "Verilog에서 temp / 10 한 줄이 UART 송신 모듈을 완전히 뻗게 만든 원인과, BCD 디코더 로직으로 대체하여 117-byte 전송 신뢰성 100%를 확보한 과정.",
+        excerpt_en: "How a single temp / 10 line caused complete UART TX deadlock in FPGA, and how replacing it with hardware-friendly BCD decoder logic achieved 100% transmission reliability.",
+        category: "firmware",
+        level: "Advanced",
+        date: "2026. 08. 08",
+        readTime: "8 min",
+        tags: ["Verilog", "FPGA", "UART", "Setup Time", "BCD", "Timing"],
+        sections: [
+          { type: "h3", text: "🔍 문제 상황" },
+          { type: "p", text: "117-byte의 통합 데이터(RTC 시간, 온습도, 타겟 온도 등)를 UART로 전송할 때, 특정 값(%, = 등)이 깨지거나 송신 모듈 자체가 완전히 뻗어버리는 데드락 발생." },
+          { type: "h3", text: "📊 원인 분석: Setup Time Violation" },
+          { type: "ul", items: [
+            "소프트웨어 관점으로 작성한 14비트 나눗셈 연산(temp / 10)이 FPGA 내부에서 거대한 조합 논리 회로를 생성",
+            "전기가 이 회로를 통과하는 데 클럭 주기(10ns)보다 긴 시간이 걸려, 클럭 엣지 시점에 찌꺼기 값을 래치",
+            "이것이 바로 Setup Time Violation — MCU에서는 발생하지 않는 FPGA 고유의 문제"
+          ]},
+          { type: "h3", text: "✅ 해결: 하드웨어 친화적 BCD 디코더" },
+          { type: "code", lang: "Verilog", title: "나눗셈 제거 → BCD 디코더", code: `// ❌ 위험: 거대한 조합 논리 생성
+// wire [3:0] tens = temp / 10;
+// wire [3:0] ones = temp % 10;
+
+// ✅ 안전: 비교+뺄셈 기반 BCD 디코더
+reg [3:0] tens, ones;
+always @(*) begin
+    if (temp >= 90)      begin tens = 9; ones = temp - 90; end
+    else if (temp >= 80) begin tens = 8; ones = temp - 80; end
+    else if (temp >= 70) begin tens = 7; ones = temp - 70; end
+    // ... (생략)
+    else                 begin tens = 0; ones = temp;      end
+end` },
+          { type: "h3", text: "📈 결과" },
+          { type: "ul", items: [
+            "나눗셈 연산자 완전 제거 → Setup Time Violation 해소",
+            "117-byte UART 전송 신뢰성 100% 확보 (ComPortMaster로 패킷 유실 0건 확인)",
+            "교훈: FPGA에서는 '동작하는 코드'가 아니라 '타이밍을 만족하는 회로'를 작성해야 한다"
+          ]}
+        ]
       }
     ];
 

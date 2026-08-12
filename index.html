@@ -490,6 +490,30 @@
       margin: 0 auto;
     }
 
+    /* Main Projects — 2열, 더 큰 카드 */
+    .project-grid--main {
+      grid-template-columns: repeat(2, 1fr);
+    }
+    .project-grid--main .project-card-img { height: 240px }
+    .project-card--main {
+      border: 2px solid rgba(14,165,233,.25);
+      box-shadow: 0 2px 16px rgba(14,165,233,.06);
+    }
+    .project-card--main:hover { border-color: var(--cyan) }
+
+    /* Sub Projects — 3열, 작은 카드 */
+    .project-grid--sub {
+      grid-template-columns: repeat(3, 1fr);
+    }
+
+    /* sk-desc 스타일 — skill 카드 설명 */
+    .sk-desc {
+      margin-top: 10px;
+      font-size: 12.5px;
+      color: var(--muted);
+      line-height: 1.65;
+    }
+
     .project-card {
       background: var(--bg-white);
       border-radius: 20px;
@@ -1052,6 +1076,9 @@
         grid-template-columns: repeat(2, 1fr)
       }
 
+      .project-grid--main { grid-template-columns: 1fr }
+      .project-grid--sub  { grid-template-columns: repeat(2, 1fr) }
+
       .contact-wrap {
         grid-template-columns: 1fr
       }
@@ -1073,6 +1100,8 @@
       .stats-section {
         grid-template-columns: repeat(2, 1fr)
       }
+
+      .project-grid--sub { grid-template-columns: 1fr }
 
       .sidebar-toc {
         right: 12px;
@@ -1201,9 +1230,23 @@ Data-driven Embedded SW Engineer
         <h2>프로젝트 포트폴리오</h2>
         <p>카드를 클릭하면 상세 정보를 확인할 수 있습니다.</p>
       </div>
-      <div class="project-grid" id="project-grid">
+
+      <!-- Main Projects -->
+      <div class="project-sub-heading reveal" style="max-width:1400px;margin:0 auto;padding:0 clamp(18px,5vw,72px)">
+        <h3 style="font-size:16px;font-weight:800;color:var(--text);display:flex;align-items:center;gap:8px;margin-bottom:16px">⭐ Main Projects</h3>
+      </div>
+      <div class="project-grid project-grid--main" id="project-grid-main">
         <!-- JS가 생성 -->
       </div>
+
+      <!-- Sub Projects -->
+      <div class="project-sub-heading reveal" style="max-width:1400px;margin:32px auto 0;padding:0 clamp(18px,5vw,72px)">
+        <h3 style="font-size:14px;font-weight:700;color:var(--muted);display:flex;align-items:center;gap:6px;margin-bottom:12px">📂 Sub Projects</h3>
+      </div>
+      <div class="project-grid project-grid--sub" id="project-grid-sub">
+        <!-- JS가 생성 -->
+      </div>
+
       <div class="matrix-btn-wrap reveal">
         <button class="btn ghost" id="matrix-btn">📊 전체 프로젝트 비교 매트릭스 보기</button>
       </div>
@@ -1217,61 +1260,60 @@ Data-driven Embedded SW Engineer
       </div>
       <div class="skill-grid">
 
-        <!-- Language & Tools -->
+        <!-- Language -->
         <article class="reveal-stagger">
           <h3>🔤 Language</h3>
           <div class="skill-tags">
             <span class="sk sk-cyan">C</span>
             <span class="sk sk-cyan">C++</span>
             <span class="sk sk-cyan">Python</span>
-            <span class="sk">vi / Vim</span>
-            <span class="sk">Linux Shell</span>
             <span class="sk">Verilog HDL</span>
+            <span class="sk">Linux Shell</span>
           </div>
+          <p class="sk-desc">STM32 펌웨어 전체를 C로 구현 (HAL + Bare-metal). Verilog로 DHT11 40-bit 타이밍 파싱 및 PWM 제어 로직 설계. Python으로 YOLOv8 학습·추론 및 시리얼 데이터 시각화.</p>
         </article>
 
+        <!-- Dev Tools -->
         <article class="reveal-stagger">
           <h3>🛠 Dev Tools</h3>
           <div class="skill-tags">
-            <span class="sk">VSCode</span>
             <span class="sk">STM32CubeIDE</span>
-            <span class="sk sk-green">Git</span>
-            <span class="sk sk-green">GitHub</span>
-            <span class="sk sk-green">GitLab</span>
+            <span class="sk">VSCode</span>
+            <span class="sk sk-green">Git / GitHub / GitLab</span>
             <span class="sk">Makefile</span>
-            <span class="sk">Qt6 / QtCreator</span>
+            <span class="sk">vi / Vim</span>
           </div>
+          <p class="sk-desc">CubeIDE로 NVIC 우선순위, 클럭 트리, 핀맵 설정. Organization 기반 Git 브랜치 관리 (feature/imu, hotfix/ota). Makefile 빌드 자동화 경험.</p>
         </article>
 
-        <!-- Protocols & Frameworks -->
+        <!-- Protocol -->
         <article class="reveal-stagger">
           <h3>📡 Protocol</h3>
           <div class="skill-tags">
-            <span class="sk sk-cyan">UART</span>
             <span class="sk sk-cyan">I2C</span>
+            <span class="sk sk-cyan">UART (DMA)</span>
             <span class="sk sk-cyan">SPI</span>
             <span class="sk sk-cyan">CAN / CAN-FD</span>
-            <span class="sk">Ethernet / TCP</span>
             <span class="sk">MQTT</span>
             <span class="sk">AT Command</span>
           </div>
+          <p class="sk-desc">I2C1 버스에 MPU6050+HMC5883L 2디바이스 동시 운용, Mutex 기반 버스 중재. UART DMA 송수신으로 CLI/모니터 구현. ESP8266 AT 명령 기반 Wi-Fi OTA 다운로드. CAN 프로토콜 학습 완료.</p>
         </article>
 
+        <!-- Framework -->
         <article class="reveal-stagger">
-          <h3>🧩 Framework</h3>
+          <h3>🧩 Framework &amp; OS</h3>
           <div class="skill-tags">
-            <span class="sk sk-violet">FreeRTOS</span>
-            <span class="sk sk-violet">CMSIS-RTOS2</span>
+            <span class="sk sk-violet">FreeRTOS (CMSIS-RTOS2)</span>
             <span class="sk">HAL / LL Driver</span>
             <span class="sk">Device Driver</span>
             <span class="sk">Linux Kernel</span>
-            <span class="sk">OpenCV</span>
-            <span class="sk">YOLOv8</span>
-            <span class="sk">TensorFlow</span>
+            <span class="sk">Qt6</span>
           </div>
+          <p class="sk-desc">FreeRTOS 6-Task 아키텍처 설계. Semaphore로 ISR-Task 동기화, Mutex로 I2C 공유 자원 보호, 우선순위 역전 분석. Linux 디바이스 드라이버(chardev) 구현 학습.</p>
         </article>
 
-        <!-- Boards & Cloud -->
+        <!-- Board & MCU -->
         <article class="reveal-stagger">
           <h3>🔌 Board &amp; MCU</h3>
           <div class="skill-tags">
@@ -1279,21 +1321,24 @@ Data-driven Embedded SW Engineer
             <span class="sk sk-cyan">ESP32 / ESP8266</span>
             <span class="sk">Raspberry Pi</span>
             <span class="sk">Jetson Nano</span>
-            <span class="sk">AVR / Arduino Uno</span>
+            <span class="sk">AVR (Arduino Uno)</span>
             <span class="sk">FPGA (Basys3)</span>
           </div>
+          <p class="sk-desc">STM32에서 HAL + FreeRTOS 기반 짐벌·OTA 구현. Jetson Nano에서 YOLOv8 TensorRT FP16 추론 최적화. RPi C 소켓 서버·크로스 컴파일 구축.</p>
         </article>
 
+        <!-- Edge / Cloud / AI -->
         <article class="reveal-stagger">
-          <h3>☁️ Edge / Cloud</h3>
+          <h3>☁️ Edge / Cloud / AI</h3>
           <div class="skill-tags">
             <span class="sk sk-green">AWS IoT Core</span>
             <span class="sk sk-green">IBM Watson IoT</span>
             <span class="sk">Node-RED</span>
-            <span class="sk">Grafana</span>
-            <span class="sk">InfluxDB</span>
-            <span class="sk">MariaDB</span>
+            <span class="sk">Grafana / InfluxDB</span>
+            <span class="sk">OpenCV / YOLOv8</span>
+            <span class="sk">TensorRT</span>
           </div>
+          <p class="sk-desc">MQTT → AWS/IBM Gateway로 센서 데이터 파이프라인 구축. YOLOv8n/s 학습 후 Jetson에서 TensorRT FP16 변환, 벤치마크(FPS +24.9%, p95 −18.6%). Grafana 대시보드 실시간 모니터링.</p>
         </article>
 
         <!-- Awards -->
@@ -1540,23 +1585,93 @@ void gimbalExecuteCombinedControl(void) {
         links: [["GitHub", "https://github.com/jmGim/Rhythm_Game_C"]]
       },
       verilog: {
-        title: "Verilog 스마트 공조기",
-        subtitle: "H/W 레벨의 40-byte 타이밍 분석 및 로직 제어",
+        title: "Basys3 기반 스마트 공조 제어 시스템",
+        subtitle: "FSM 타이밍 최적화 및 117-byte UART 파이프라인 신뢰성 확보",
         image: "images/3.Verilog_Air_Conditioner_img.png",
-        brief: "H/W 레벨 타이밍 분석 공조기 (Verilog HDL)",
+        brief: "FSM 타이밍 / BCD 디코더 / UART 117B 무결 전송",
         num: 3,
-        tags: ["Verilog", "DHT11", "DC Motor", "Timing Analysis", "FPGA"],
-        summary: "FPGA 환경에서 Verilog를 이용해 온도/습도 센서(DHT11)의 40-byte 신호를 나노초 단위로 직접 분석하고 파싱하여 DC 모터를 구동하는 순수 하드웨어 제어 프로젝트입니다.",
+        tags: ["Verilog HDL", "FPGA (Basys3)", "DHT11", "UART", "PWM", "FSM"],
+        period: "202X.XX ~ 202X.XX",
+        target: "임베디드 SW 엔지니어 (차량 전장 및 방산 도메인)",
+        hw: "Xilinx Basys3 (Artix-7), DHT11, DS1302(RTC), DC Motor, Rotary Encoder, 7-Seg FND",
+        summary: "100MHz 클럭 환경에서 발생하는 비동기 노이즈와 타이밍 위반(Setup Time Violation)을 FSM 단일 카운터 구조와 고속 BCD 디코더 로직으로 해결. 센서 제어부터 117-byte 다중 UART 프레임 전송까지 데이터 신뢰성 100%를 확보한 통합 스마트 공조 시스템을 설계 및 구현했습니다.",
         role: [
-          "마이크로초 단위의 타이밍 다이어그램 분석을 통한 DHT11 센서 프로토콜 파싱 로직 설계",
-          "측정된 온습도 값에 따른 DC 모터 PWM 제어기 Verilog 구현",
-          "디지털 논리회로 기반의 신호 무결성 확보 및 디바운싱 처리"
+          "100% 개인 프로젝트 (센서 프로토콜 파싱, 하드웨어 타이밍 설계, UART 파이프라인, 오실로스코프 검증)",
+          "100MHz 클럭 기반 1us tick generator 직접 설계 → DHT11 Handshaking 프로토콜(Start 18ms → ACK 80us) 구현",
+          "6종 이기종 데이터를 레지스터 래치 → 117-byte ASCII 변환 → UART 9600bps 순차 전송 파이프라인 구축",
+          "온도 편차 기반 3단계 PWM 제어(OFF 0%, LOW 70%, HIGH 90%) 및 Testbench 검증"
         ],
-        architecture: ["Verilog HDL", "DHT11 Sensor Interface", "PWM Controller", "DC Motor Driver"],
+        roleNote: "Xilinx Vivado (Verilog HDL), Tektronix Oscilloscope, ComPortMaster로 교차 검증 수행",
+        architecture: ["DHT11 Single-Wire FSM", "DS1302 RTC (SPI)", "Rotary Encoder → Target Temp", "DC Motor PWM Controller", "Data Sender → UART TX Pipeline", "7-Segment FND Display"],
+        detailSections: [
+          {
+            heading: "🔬 DHT11 프로토콜 분석 및 CRC 무결성 검증",
+            desc: "100MHz 클럭 기반 1us tick generator를 직접 설계하여, 딜레이 함수 없이 마이크로초 단위의 Handshaking 프로토콜을 구현. 오실로스코프로 캡처한 40bit 실제 파형의 이진수 값과 FPGA 내부 레지스터의 Checksum 연산 결과가 정확히 일치함을 확인하고, data_valid == 1'b1 일 때만 UART 전송을 트리거하여 쓰레기 값 전송을 차단했습니다.",
+            bullets: [
+              "<strong>정밀 제어:</strong> Start Signal 18ms LOW → Release → ACK 80us LOW/80us HIGH 타이밍을 카운터로 직접 제어",
+              "<strong>데이터 판별:</strong> 비트 '0'(28us LOW) vs '1'(70us LOW) 구간을 카운터 비교로 판정",
+              "<strong>CRC 검증:</strong> 8bit Humidity_H + Humidity_L + Temp_H + Temp_L == Checksum byte"
+            ]
+          },
+          {
+            heading: "🌡️ 온도 편차 기반 동적 PWM 제어 (Testbench 검증)",
+            desc: "로터리 인코더로 설정한 목표 온도(target_temp) 대비 현재 온도(current_temp)의 차이에 따라 3단계 계통 제어를 적용. Vivado Testbench 시뮬레이션으로 온도 변화 엣지 시점에 1클럭 오차 없이 PWM Duty Cycle이 동적으로 변화하는 것을 검증 완료했습니다.",
+            bullets: [
+              "<strong>OFF (0%):</strong> current ≤ target",
+              "<strong>LOW (70%):</strong> current > target && diff ≤ 3°C",
+              "<strong>HIGH (90%):</strong> diff > 3°C"
+            ]
+          },
+          {
+            heading: "📡 통합 데이터 UART 파이프라인 (117-byte 무결 전송)",
+            desc: "RTC 시간, 온습도, 타겟 온도, 팬 속도 등 6종의 이기종 데이터를 하나의 레지스터로 래치(Latch)한 뒤, ASCII 코드로 실시간 맵핑하여 9600 BPS 속도에 맞춰 117개의 문자를 순차 전송. PC 터미널(ComPortMaster)로 단 하나의 패킷 유실이나 문자 깨짐 없이 정상 출력됨을 확인했습니다."
+          }
+        ],
         troubleshooting: [
-          "[해결] CAN 통신 분석과 유사한 저수준 데이터 스트림(40-byte) 타이밍 엇갈림 현상 해결",
-          "[해결] 클럭 분주(Clock Divider)를 세밀하게 조정하여 센서 응답 신호와 래치 타이밍 동기화"
+          "[분석] 비동기 노이즈 및 타이밍 위반으로 인한 1-bit Shift 에러",
+          "[해결] 나눗셈 연산자에 의한 UART 데드락 (Setup Time Violation)",
+          "[해결] Inout 포트 임피던스 설정 오류로 센서 무응답"
         ],
+        troubleDetail: [
+          {
+            badge: "타이밍 위반",
+            title: "비동기 노이즈 → 1-bit Shift 에러 (습도 100% 초과 쓰레기 값)",
+            symptom: "습도 데이터가 물리적 한계치 100%를 초과한 쓰레기 값(130, 178 등)으로 수신. 통신 간헐적 끊김.",
+            cause: [
+              "외부 점퍼선의 RC 지연으로 DHT11 LOW 신호가 늘어져, 100MHz FPGA가 '0'(28us)을 '1'(70us)로 오인 샘플링",
+              "메인 FSM 내부에서 대기용·측정용 카운터를 이중 혼용 → 상태 전이 시 타이밍 동기화 깨짐"
+            ],
+            solution: [
+              "<strong>2-Stage Synchronizer 도입:</strong> 비동기 신호(<code>dht11_data</code>)를 플립플롭 2단으로 통과시켜 Metastability 및 글리치 원천 차단",
+              "<strong>FSM 단일 카운터 구조 개편:</strong> 1us마다 무조건 증가, Edge 이벤트 시에만 <code>r_wait_cnt &lt;= 0</code> 리셋하는 안전한 FSM 설계 표준 적용"
+            ]
+          },
+          {
+            badge: "Setup Violation",
+            title: "나눗셈 연산자(/, %) → UART 데드락",
+            symptom: "117-byte 통합 데이터 UART 전송 시, 특정 값이 깨지거나 송신 모듈이 완전히 뻗는 데드락 발생.",
+            cause: [
+              "소프트웨어식 14비트 나눗셈(<code>temp / 10</code>)이 FPGA 내부에서 거대한 조합 논리 회로 생성",
+              "전기가 회로를 통과하는 데 클럭 주기(10ns)보다 긴 시간 소요 → 찌꺼기 값 래치 (Setup Time Violation)"
+            ],
+            solution: [
+              "나눗셈 연산자를 코드에서 <strong>완전 제거</strong>",
+              "비교문(<code>&gt;=</code>)과 뺄셈 기반의 <strong>하드웨어 친화적 고속 BCD 디코더 로직</strong>으로 전면 교체 → 데이터 병목 제거, 117-byte 전송 신뢰성 100% 확보"
+            ]
+          },
+          {
+            badge: "H/W 설계",
+            title: "Inout 포트 임피던스 설정 오류 → 센서 무응답",
+            symptom: "MCU에서 Start Signal 전송 불가. 센서 무응답.",
+            cause: [
+              "<code>inout</code> 핀 제어 시 High-Z(<code>1'bz</code>)가 아닌 논리값 <code>1'b0</code>을 잘못 인가 → 버스 충돌 (Pull-up 고정)"
+            ],
+            solution: [
+              "<code>assign dht11_data = dht_drive ? 1'b0 : 1'bz;</code> 형태의 정석적인 <strong>Open-Drain 구조</strong>로 수정하여 제어권 확보"
+            ]
+          }
+        ],
+        capabilitySummary: "소프트웨어적 순차 처리가 아닌 FPGA의 <strong>병렬 모듈 아키텍처</strong>를 설계하고, 나눗셈 연산자 제거·BCD 디코더·2-Stage Synchronizer 등 <strong>하드웨어 레벨의 문제 해결 능력</strong>을 실증했습니다. 측정 장비(오실로스코프)와 Testbench를 통한 교차 검증으로 데이터 무결성을 증명할 수 있습니다.",
         links: [["GitHub", "https://github.com/jmGim/Verilog_2026/tree/main/18.smart_air_conditioner"]]
       },
       airdrum: {
@@ -1684,18 +1799,11 @@ void gimbalExecuteCombinedControl(void) {
       }
     };
 
-    /* 프로젝트 표시 순서 — 신규 프로젝트 추가 시 배열에 key만 추가하면 자동 카운트 */
-    const projectOrder = [
-      'gimbal',   // 1. STM32 3축 스마트 짐벌
-      'parking',  // 2. 데이터 기반 자율주차 시스템
-      'verilog',  // 3. Verilog 스마트 공조기
-      'vending',  // 4. Smart IoT 자판기
-      'airdrum',  // 5. IoT Air Drum
-      'store',    // 6. 매장관리 시스템 (Edge Cloud)
-      'rhythm',   // 7. SDL2 Rhythm Game
-      'yolo',     // 8. YOLOv8 무인결제 시스템
-      // 'cctv',  // 비공개 처리
-    ];
+    /* ===== Main / Sub 프로젝트 분리 ===== */
+    const mainProjects = ['gimbal', 'verilog'];
+    const subProjects  = ['yolo', 'parking', 'vending', 'airdrum', 'store', 'rhythm'];
+    // 'cctv' — 비공개 처리
+    const projectOrder = [...mainProjects, ...subProjects];
 
     /* ==============================================
        프로젝트 경험 숫자 자동 카운트
@@ -1703,14 +1811,13 @@ void gimbalExecuteCombinedControl(void) {
     document.getElementById('project-count').textContent = projectOrder.length;
 
     /* ==============================================
-       PROJECT CARD GRID 생성
+       PROJECT CARD GRID 생성 (Main / Sub 분리)
     =============================================== */
-    const gridEl = document.getElementById('project-grid');
-    projectOrder.forEach((key, idx) => {
+    function createCard(key, idx, isMain) {
       const p = projects[key];
-      const displayNum = idx + 1; // 자동 번호 부여
+      const displayNum = idx + 1;
       const card = document.createElement('div');
-      card.className = 'project-card reveal-stagger';
+      card.className = 'project-card reveal-stagger' + (isMain ? ' project-card--main' : '');
       card.style.transitionDelay = `${idx * 0.08}s`;
       card.dataset.project = key;
       card.setAttribute('role', 'button');
@@ -1722,13 +1829,19 @@ void gimbalExecuteCombinedControl(void) {
           <div class="project-card-num num-${((idx % 8) + 1)}">${displayNum}</div>
           <div class="project-card-title">${p.title}</div>
           <div class="project-card-brief">${p.brief}</div>
-          <div class="project-card-tags">${p.tags.slice(0, 4).map(t => `<span class="tag-mini">${t}</span>`).join('')}</div>
+          <div class="project-card-tags">${p.tags.slice(0, isMain ? 6 : 4).map(t => `<span class="tag-mini">${t}</span>`).join('')}</div>
         </div>
       `;
       card.addEventListener('click', () => openModal(key));
       card.addEventListener('keydown', e => { if (e.key === 'Enter') openModal(key); });
-      gridEl.appendChild(card);
-    });
+      return card;
+    }
+
+    const mainGrid = document.getElementById('project-grid-main');
+    mainProjects.forEach((key, idx) => mainGrid.appendChild(createCard(key, idx, true)));
+
+    const subGrid = document.getElementById('project-grid-sub');
+    subProjects.forEach((key, idx) => subGrid.appendChild(createCard(key, mainProjects.length + idx, false)));
 
     /* ==============================================
        TROUBLESHOOT BADGE FORMATTER
