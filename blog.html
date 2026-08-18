@@ -597,20 +597,51 @@ always @(*) begin
     else                 begin tens = 0; ones = temp;      end
 end` },
           { type: "h3", text: "📈 결과" },
+          { type: "h3", text: "📈 결과" },
           { type: "ul", items: [
             "나눗셈 연산자 완전 제거 → Setup Time Violation 해소",
             "117-byte UART 전송 신뢰성 100% 확보 (ComPortMaster로 패킷 유실 0건 확인)",
             "교훈: FPGA에서는 '동작하는 코드'가 아니라 '타이밍을 만족하는 회로'를 작성해야 한다"
-          ]}
+          ]
+        ],
+        sections_en: [
+          { type: "h3", text: "🔍 Problem Situation" },
+          { type: "p", text: "When transmitting 117-byte integrated data (RTC time, Temp/Humidity, Target Temp, etc.) via UART, specific values (e.g. %, =) are corrupted or the TX module completely hangs, causing a deadlock." },
+          { type: "h3", text: "📊 Root Cause: Setup Time Violation" },
+          { type: "ul", items: [
+            "A 14-bit division operator (temp / 10) written from a software perspective generates a massive combinational logic circuit inside the FPGA.",
+            "It takes longer than the clock period (10ns) for electricity to pass through this circuit, causing garbage values to be latched at the clock edge.",
+            "This is a Setup Time Violation — a unique FPGA issue that doesn't occur in MCUs."
+          ]},
+          { type: "h3", text: "✅ Solution: Hardware-Friendly BCD Decoder" },
+          { type: "code", lang: "Verilog", title: "Remove Division → BCD Decoder", code: `// ❌ DANGER: Generates massive combinational logic
+// wire [3:0] tens = temp / 10;
+// wire [3:0] ones = temp % 10;
+
+// ✅ SAFE: Compare+Subtract-based BCD Decoder
+reg [3:0] tens, ones;
+always @(*) begin
+    if (temp >= 90)      begin tens = 9; ones = temp - 90; end
+    else if (temp >= 80) begin tens = 8; ones = temp - 80; end
+    else if (temp >= 70) begin tens = 7; ones = temp - 70; end
+    // ... (omitted)
+    else                 begin tens = 0; ones = temp;      end
+end` },
+          { type: "h3", text: "📈 Result" },
+          { type: "ul", items: [
+            "Complete removal of division operators → Setup Time Violation resolved.",
+            "100% reliability secured for 117-byte UART transmission (0 packet loss confirmed via ComPortMaster).",
+            "Lesson: In FPGA design, you must write 'circuits that satisfy timing requirements', not just 'code that works'."
+          ]
         ]
       }
     ];
 
     const SERIES = [
-      { title: "STM32 OTA 시스템 구축 A to Z", desc: "부트로더 설계 → ESP8266 다운로드 → Flash 파티셔닝 → CRC32 검증 전 과정", posts: 5, completed: 3, tags: ["STM32", "OTA", "Bootloader"] },
-      { title: "FreeRTOS 실전 패턴 가이드", desc: "Task 설계, Semaphore/Mutex 동기화, 우선순위 역전 해결, Stack 모니터링", posts: 4, completed: 2, tags: ["FreeRTOS", "RTOS", "Mutex"] },
-      { title: "센서 융합 알고리즘 Deep Dive", desc: "상보필터, Tilt-Compensated Yaw, Hard-Iron 캘리브레이션 이론과 구현", posts: 3, completed: 2, tags: ["Sensor Fusion", "MPU6050"] },
-      { title: "MISRA-C 코딩 스탠다드 정리", desc: "방산/자동차 SW 개발 필수 MISRA-C:2012 주요 Rule 및 위반 사례 분석", posts: 6, completed: 1, tags: ["MISRA-C", "Safety"] },
+      { title: "STM32 OTA 시스템 구축 A to Z", title_en: "STM32 OTA System A to Z", desc: "부트로더 설계 → ESP8266 다운로드 → Flash 파티셔닝 → CRC32 검증 전 과정", desc_en: "Bootloader Design → ESP8266 Download → Flash Partitioning → CRC32 Validation", posts: 5, completed: 3, tags: ["STM32", "OTA", "Bootloader"] },
+      { title: "FreeRTOS 실전 패턴 가이드", title_en: "FreeRTOS Practical Patterns", desc: "Task 설계, Semaphore/Mutex 동기화, 우선순위 역전 해결, Stack 모니터링", desc_en: "Task Design, Semaphore/Mutex Sync, Priority Inversion Fix, Stack Monitoring", posts: 4, completed: 2, tags: ["FreeRTOS", "RTOS", "Mutex"] },
+      { title: "센서 융합 알고리즘 Deep Dive", title_en: "Sensor Fusion Algorithm Deep Dive", desc: "상보필터, Tilt-Compensated Yaw, Hard-Iron 캘리브레이션 이론과 구현", desc_en: "Complementary Filter, Tilt-Compensated Yaw, Hard-Iron Calibration Theory & Implementation", posts: 3, completed: 2, tags: ["Sensor Fusion", "MPU6050"] },
+      { title: "MISRA-C 코딩 스탠다드 정리", title_en: "MISRA-C Coding Standard Summary", desc: "방산/자동차 SW 개발 필수 MISRA-C:2012 주요 Rule 및 위반 사례 분석", desc_en: "MISRA-C:2012 Rules & Violation Cases for Defense/Automotive SW", posts: 6, completed: 1, tags: ["MISRA-C", "Safety"] },
     ];
 
     /* ========================================
@@ -619,14 +650,16 @@ end` },
     function collectSnippets() {
       const snippets = [];
       POSTS.forEach(post => {
-        if (!post.sections) return;
-        post.sections.forEach(sec => {
+        const targetSections = (currentLang === 'en' && post.sections_en) ? post.sections_en : post.sections;
+        if (!targetSections) return;
+        targetSections.forEach(sec => {
           if (sec.type === 'code') {
+            const title = (currentLang === 'en' && post.title_en) ? post.title_en : post.title;
             snippets.push({
-              title: sec.title || post.title,
+              title: sec.title || title,
               lang: sec.lang || 'C',
               code: sec.code,
-              desc: `📄 출처: "${post.title}"`,
+              desc: currentLang === 'en' ? `📄 Source: "${title}"` : `📄 출처: "${title}"`,
               tags: post.tags.slice(0, 3),
               category: post.category,   // ← 카테고리 필터용
               postId: post.id
@@ -738,9 +771,9 @@ end` },
           // EN 모드일 때 title_en / excerpt_en 우선 사용
           const title   = (currentLang === 'en' && p.title_en)   ? p.title_en   : p.title;
           const excerpt = (currentLang === 'en' && p.excerpt_en) ? p.excerpt_en : p.excerpt;
-          const ctrlHint = p.url ? (currentLang === 'en' ? ' (Ctrl+Click: new page)' : ' (Ctrl+클릭: 새 탭)') : '';
+          const ctrlHint = currentLang === 'en' ? ' (Ctrl+Click: new page)' : ' (Ctrl+클릭: 새 탭)';
           html += `
-            <article class="post-card" data-post-id="${p.id}">
+            <article class="post-card" data-post-id="${p.id}" title="${ctrlHint}">
               <div class="post-meta">
                 <span class="level-badge ${getLevelClass(p.level)}">${p.level}</span>
                 <span class="meta-text">⏱ ${p.readTime}</span>
@@ -759,12 +792,17 @@ end` },
     }
 
     function renderSeries() {
-      let html = `<div class="feed-header"><h2>학습 시리즈</h2><span>${SERIES.length} series</span></div><div class="series-list">`;
-      SERIES.forEach(s => {
+      const headerTitle = currentLang === 'en' ? 'Learning Series' : '학습 시리즈';
+      const seriesCountLabel = currentLang === 'en' ? 'series' : '시리즈';
+      let html = `<div class="feed-header"><h2>${headerTitle}</h2><span>${SERIES.length} ${seriesCountLabel}</span></div><div class="series-list">`;
+      SERIES.forEach((s, idx) => {
         const pct = Math.round((s.completed / s.posts) * 100);
+        const title = (currentLang === 'en' && s.title_en) ? s.title_en : s.title;
+        const desc = (currentLang === 'en' && s.desc_en) ? s.desc_en : s.desc;
+        const ctrlHint = currentLang === 'en' ? ' (Ctrl+Click: new page)' : ' (Ctrl+클릭: 새 탭)';
         html += `
-          <div class="series-card">
-            <h4>${s.title}</h4><p>${s.desc}</p>
+          <div class="series-card" data-idx="${idx}" style="cursor:pointer" title="${ctrlHint}">
+            <h4>${title}</h4><p>${desc}</p>
             <div class="series-meta"><span>📄 ${s.completed}/${s.posts}</span><span>📊 ${pct}%</span></div>
             <div class="post-tags" style="margin-top:8px">${s.tags.map(t => `<span class="post-tag">#${t}</span>`).join('')}</div>
             <div class="series-progress"><div class="series-progress-bar" style="width:${pct}%"></div></div>
@@ -786,7 +824,9 @@ end` },
 
       // 스니펫 고유 카테고리 목록
       const allCats = [...new Set(snippets.map(s => s.category))];
-      let html = `<div class="feed-header"><h2>Code Snippets</h2><span>${filtered.length} snippets (포스트에서 자동 수집)</span></div>`;
+      const headerTitle = currentLang === 'en' ? 'Code Snippets' : '코드 스니펫';
+      const countLabel = currentLang === 'en' ? 'snippets (Auto-collected)' : 'snippets (포스트에서 자동 수집)';
+      let html = `<div class="feed-header"><h2>${headerTitle}</h2><span>${filtered.length} ${countLabel}</span></div>`;
       html += `<div class="snippet-cats">`;
       html += `<button class="snippet-cat-btn ${activeCategory==='all'?'active':''}" data-scat="all">All</button>`;
       allCats.forEach(cat => {
@@ -796,11 +836,12 @@ end` },
       html += `</div>`;
 
       if (!filtered.length) {
-        html += `<div class="empty-state"><p>검색 결과가 없습니다.</p></div>`;
+        html += `<div class="empty-state"><p>${currentLang === 'en' ? 'No results found.' : '검색 결과가 없습니다.'}</p></div>`;
       } else {
-        filtered.forEach(s => {
+        filtered.forEach((s, idx) => {
+          const ctrlHint = currentLang === 'en' ? ' (Ctrl+Click: new page)' : ' (Ctrl+클릭: 새 탭)';
           html += `
-            <div class="snippet-card">
+            <div class="snippet-card" data-idx="${idx}" style="cursor:pointer" title="${ctrlHint}">
               <div class="snippet-header"><h4>${s.title}</h4><span class="snippet-lang">${s.lang}</span></div>
               <div class="snippet-code">${escapeHtml(s.code)}</div>
               <div class="snippet-desc">💡 ${s.desc}</div>
@@ -832,8 +873,8 @@ end` },
             if (!post) return;
 
             // Ctrl+Click → 새 페이지로 이동
-            if ((e.ctrlKey || e.metaKey) && post.url) {
-              window.open(post.url, '_blank');
+            if (e.ctrlKey || e.metaKey) {
+              window.open(post.url || ('post_' + post.id + '.html'), '_blank');
               return;
             }
             // 일반 클릭 → 모달 열기
@@ -841,12 +882,31 @@ end` },
           });
         });
       }
-      // 스니펫 카테고리 버튼 이벤트 바인딩
+      // 시리즈 카드 클릭 이벤트 바인딩
+      if (activeTab === 'series') {
+        feed.querySelectorAll('.series-card').forEach(card => {
+          card.addEventListener('click', (e) => {
+            const idx = card.dataset.idx;
+            if (e.ctrlKey || e.metaKey) {
+              window.open('series_' + idx + '.html', '_blank');
+            }
+          });
+        });
+      }
+      // 스니펫 카테고리 버튼 및 스니펫 카드 클릭 이벤트 바인딩
       if (activeTab === 'snippets') {
         feed.querySelectorAll('.snippet-cat-btn').forEach(btn => {
           btn.addEventListener('click', () => {
             activeCategory = btn.dataset.scat;
             render();
+          });
+        });
+        feed.querySelectorAll('.snippet-card').forEach(card => {
+          card.addEventListener('click', (e) => {
+            const idx = card.dataset.idx;
+            if (e.ctrlKey || e.metaKey) {
+              window.open('snippet_' + idx + '.html', '_blank');
+            }
           });
         });
       }

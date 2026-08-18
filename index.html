@@ -1796,11 +1796,107 @@ void gimbalExecuteCombinedControl(void) {
           "[신뢰성] n.pt 기준선 미보유로 n FP16 7.132 FPS를 개선율 아닌 '차기 후보 성능'으로 분리 — 과장 없는 QA 태도"
         ],
         links: [["GitHub", "https://github.com/jmGim"]]
+      },
+      bmsota: {
+        title: "BMS-OTA 통합 EVSE 플랫폼",
+        subtitle: "Local Server Gateway, CAN/WiFi OTA, Bootloader Handling",
+        image: "images/9.BMS_OTA_EVSE_Platform_img.png",
+        brief: "BMS EVSE CAN OTA 플랫폼 구축",
+        num: 9,
+        tags: ["BMS", "EVSE", "CAN", "WiFi", "OTA", "Bootloader", "Embedded C", "No Cloud"],
+        period: "202X.XX ~ 202X.XX",
+        target: "임베디드 SW 엔지니어 (차량 전장 및 방산 도메인)",
+        hw: "STM32F446(BMS), STM32F429(EVSE), Raspberry Pi(Local Server Gateway)",
+        summary: "STM32 기반 BMS 및 EVSE 제어기와 Raspberry Pi 로컬 게이트웨이를 연동하여 전기차 충전 인프라의 핵심을 구현한 프로젝트입니다. CAN 기반 내부 통신, WiFi를 통한 펌웨어 무선 업데이트(OTA), 커스텀 부트로더 설계, 그리고 엄격한 SWRS 및 ASPICE TestSpec 기반의 QA 환경을 구축하여 시스템의 신뢰성과 안전성을 검증했습니다.",
+        role: [
+          "STM32F446 BMS / STM32F429 EVSE 펌웨어 제어 로직 설계 (OV, UV, OC, OT 등 안전 로직 구현)",
+          "Raspberry Pi 기반 로컬 서버 게이트웨이 구축 및 WiFi OTA 파이프라인 설계",
+          "OTA 펌웨어 무결성 확보를 위한 Bootloader 및 CRC32 기반 검증 로직 구현",
+          "CAN/WiFi 통신 인터페이스 설계 및 시스템 간 메시지 스케줄링 처리",
+          "SWRS(소프트웨어 요구사항) 작성 및 ASPICE 기반 테스트 케이스(P0 안전 시험) 설계 및 검증"
+        ],
+        roleNote: "※ HIL(Hardware-In-the-Loop) 시스템 구축 및 CI/CD(GitLab Runner) 기반 자동화 테스트 환경 구성",
+        architecture: ["Local Gateway Server (RPi)", "EVSE Controller (STM32F429)", "BMS Controller (STM32F446)", "CAN Transceiver", "Custom OTA Bootloader"],
+        detailSections: [
+          {
+            heading: "🚗 BMS & EVSE 핵심 제어 및 안전 로직 구현",
+            desc: "BMS 및 EVSE 제어에 필수적인 전압/전류/온도 모니터링 및 결함(Fault) 처리 로직을 구현하여 시스템 안전성을 확보했습니다.",
+            bullets: [
+              "<strong>BMS 보호 로직:</strong> Cell OV(4200mV초과)/UV(3000mV미만), Pack OV(16800mV초과), 과전류(10A초과), 과열(55°C초과) 감지 및 100ms 연속 3회 확인 시 Fault 진입.",
+              "<strong>안전 상태(Safe-State) 제어:</strong> FAULT 발생 시 Charge/Relay ON 금지, 모든 Fault 조건 해제 시(3000ms 유지) IDLE 상태 복귀 설계.",
+              "<strong>EVSE 충전 제어:</strong> Connector 체결, BMS Online, Permit True 조건 만족 시에만 충전 허용. BMS 통신(0x100) 500ms 이상 단절 시 Safe-Off 전이."
+            ]
+          },
+          {
+            heading: "📡 CAN & WiFi 기반 통신 및 OTA (Over-The-Air) 파이프라인",
+            desc: "차량 내부 CAN 통신망과 외부 WiFi 망을 연동하여, 로컬 서버로부터 안전하게 펌웨어를 다운로드하고 업데이트하는 OTA 시스템을 설계했습니다.",
+            bullets: [
+              "<strong>CAN 통신 (500kbps):</strong> EVSE와 BMS 간 상태 정보 및 제어 명령 송수신. DLC/Extended/RTR 필터링 및 통신 타임아웃(Timeout) 처리 구현.",
+              "<strong>OTA 다운로드:</strong> WiFi를 통해 바이너리 수신(8~896KiB 지원), 순차적 플래시 메모리 라이트 수행.",
+              "<strong>Bootloader & 무결성 검증:</strong> 업데이트 완료 후 CRC32 전체 이미지 검사 수행. 검증 실패(CRC 불일치) 시 NACK 반환 및 기존 펌웨어 유지(Rollback 기반 듀얼 뱅크 설계 대기)."
+            ]
+          },
+          {
+            heading: "🏗️ QA 인프라 구축 및 ASPICE 기반 테스트 자동화",
+            desc: "GitLab Runner와 Raspberry Pi를 연동하여 HIL(Hardware-in-the-Loop) 테스트 자동화 환경을 구축하고, ASPICE 요구사항 기반의 엄격한 테스트를 수행했습니다.",
+            bullets: [
+              "<strong>GitLab Runner 최적화:</strong> Raspberry Pi(armhf) 환경에서 Docker Executor 권한 이슈 및 아키텍처 불일치(Exec format error) 해결. HIL-PI Shell Runner 활용하여 펌웨어 빌드 및 테스트 자동화.",
+              "<strong>P0 대표 안전 시험:</strong> BMS OV/UV/Permit 제어, EVSE Safe-State 전이(0x100 중단 시 PE11 LOW), OTA CRC 검증(오류 시 END_UPDATE Reject) 등 독립 오라클 기반 단위/통합 테스트 진행.",
+              "<strong>테스트 산출물:</strong> 제품 SHA, Target ID, JUnit 결과 및 물리 출력 로그(Raw CAN timestamps, GPIO ODR)를 Artifact로 보존하여 추적성 확보."
+            ]
+          }
+        ],
+        troubleshooting: [
+          "[해결] Raspberry Pi 32-bit (armhf) 환경의 GitLab Runner Docker 아키텍처 불일치 문제 해결",
+          "[해결] ESP8266 OTA 수신 중 데이터 유실 및 CRC32 에러 해결",
+          "[해결] EVSE-BMS 통신 지연 시 Relay 제어 오동작 방지를 위한 타이머 동기화"
+        ],
+        troubleDetail: [
+          {
+            badge: "CI/CD & QA",
+            title: "Raspberry Pi GitLab Runner Docker 아키텍처 불일치 해결",
+            symptom: "Raspberry Pi OS(32-bit)에서 GitLab Runner 구동 시 `exec format error` 및 `no matching manifest for linux/arm/v7` 발생.",
+            cause: [
+              "커널(aarch64)과 유저스페이스/도커 데몬(armhf) 아키텍처 불일치.",
+              "AMD64/ARM64 전용 이미지를 32-bit ARMv7 환경에서 실행 시도."
+            ],
+            solution: [
+              "<code>docker image inspect</code> 명령어로 <code>linux/arm/v7</code> 호환 이미지(python:3.11-slim-bookworm) 명시적 지정.",
+              "Host binary 마운트 금지 및 QA 테스트에 필요한 패키지(file, can-utils, pytest 등)를 포함한 커스텀 QA 이미지(<code>build_rpi_qa_image</code>) 직접 빌드 적용."
+            ]
+          },
+          {
+            badge: "OTA 안정성",
+            title: "OTA 수신 중 데이터 유실 (CRC32 불일치) 방어",
+            symptom: "서버에서 펌웨어 다운로드 시 중간 청크가 간헐적으로 누락되어 CRC32 검증에 실패하고 부팅 불가 상태 진입.",
+            cause: [
+              "ESP8266 Active Receive Mode에서 고속 데이터 수신 시 버퍼 오버런 발생."
+            ],
+            solution: [
+              "데이터 수신 방식을 Passive Mode로 전환하여 MCU가 제어권을 가지고 데이터를 Fetch하도록 변경.",
+              "Bootloader에서 END_UPDATE 시 전체 이미지 CRC32 검증을 통과해야만 최종 Vector 8-byte를 기록하도록 Fail-safe 로직(위조 방지) 강화."
+            ]
+          },
+          {
+            badge: "HIL 검증",
+            title: "HIL 테스트 중 ST-Link 인식 불가 및 권한 문제",
+            symptom: "GitLab Runner에서 OpenOCD를 통한 ST-Link 타겟 접근 시 `permission denied` 및 디바이스 인식 실패.",
+            cause: [
+              "<code>gitlab-runner</code> 유저에게 USB 디바이스(plugdev) 접근 권한 부재 및 udev 규칙 누락."
+            ],
+            solution: [
+              "<code>usermod -aG plugdev gitlab-runner</code> 권한 부여.",
+              "<code>/etc/udev/rules.d/60-beog-stlink.rules</code>에 ST-Link(0483) USB 권한 규칙 추가 및 udev 리로드 수행하여 자동화 테스트 HIL 통신 복구."
+            ]
+          }
+        ],
+        capabilitySummary: "단순한 펌웨어 구현을 넘어, SWRS(요구사항) 명세 작성부터 ASPICE 기반 테스트 케이스 설계, HIL 인프라 구축까지 <strong>전 주기적 임베디드 소프트웨어 개발 역량</strong>을 실증했습니다. CI/CD 파이프라인에서 발생하는 인프라 이슈를 하드웨어와 OS 레벨로 분석하고 해결할 수 있습니다.",
+        links: [["GitLab", "#"]]
       }
     };
 
     /* ===== Main / Sub 프로젝트 분리 ===== */
-    const mainProjects = ['gimbal', 'verilog'];
+    const mainProjects = ['gimbal', 'verilog', 'bmsota'];
     const subProjects  = ['yolo', 'parking', 'vending', 'airdrum', 'store', 'rhythm'];
     // 'cctv' — 비공개 처리
     const projectOrder = [...mainProjects, ...subProjects];
