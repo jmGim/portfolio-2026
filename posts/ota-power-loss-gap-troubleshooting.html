@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>OTA 전원 차단 GAP_REQUIREMENT — Dev.Embedded</title>
+  <meta name="description" content="OTA Vector-last commit 보호와 전원 차단 복구 정책의 Gap을 분리하고 임의의 PASS 기준을 만들지 않은 QA 기록.">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'%3E%3Crect width='48' height='48' rx='12' fill='%230ea5e9'/%3E%3Ctext x='24' y='32' text-anchor='middle' font-family='system-ui' font-weight='800' font-size='14' fill='%23fff'%3E%3E_%3C/text%3E%3C/svg%3E">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap">
+  <link rel="stylesheet" href="troubleshooting-post.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="topbar-brand" href="../blog.html"><span class="brand-mark">&lt;/&gt;</span><span>Dev<span class="brand-accent">.Embedded</span></span></a>
+    <a class="topbar-back" href="../blog.html">← Blog로 돌아가기</a>
+  </header>
+
+  <main>
+    <header class="post-header">
+      <p class="kicker">Troubleshooting · OTA Quality</p>
+      <h1>OTA 전원 차단 시험:<br>임의의 PASS 기준을 만들지 않은 이유</h1>
+      <p class="dek">구현된 무결성 보호와 아직 승인되지 않은 복구 정책을 구분하고, 시험을 실행할 수 있다는 이유만으로 제품 PASS를 선언하지 않은 판단 기록입니다.</p>
+      <div class="meta-row"><span class="badge">Expert</span><span>⏱ 9 min read</span><span>2026. 08. 27</span><span class="status gap">GAP_REQUIREMENT</span></div>
+      <div class="tag-list"><span class="tag">OTA</span><span class="tag">Bootloader</span><span class="tag">Fault Injection</span><span class="tag">CRC32</span><span class="tag">QA</span></div>
+      <dl class="summary-grid">
+        <div class="summary-card"><dt>Implemented</dt><dd>Size · CRC32 · Vector 검증</dd></div>
+        <div class="summary-card"><dt>Commit Rule</dt><dd>Vector Table Last</dd></div>
+        <div class="summary-card"><dt>Open Gap</dt><dd>A/B · Rollback · Power-loss Recovery</dd></div>
+      </dl>
+    </header>
+
+    <div class="tab-nav-wrap">
+      <nav class="tab-nav" aria-label="글 목차">
+        <a href="#protection" class="active" data-section="protection"><span class="tab-num">01</span>구현 보호</a>
+        <a href="#fault" data-section="fault"><span class="tab-num">02</span>Fault Injection</a>
+        <a href="#gap" data-section="gap"><span class="tab-num">03</span>발견한 Gap</a>
+        <a href="#decision" data-section="decision"><span class="tab-num">04</span>QA 판단</a>
+      </nav>
+    </div>
+
+    <article class="post-content">
+      <section class="section" id="protection">
+        <h2>01 구현된 보호</h2>
+        <pre class="diagram">CoAP Block2 Download
+  → Bank2 Staging
+  → Size / CRC32 / Vector 검증
+  → Relay OFF
+  → Backup SRAM 요청
+  → Reset
+  → Bootloader Copy
+  → Vector Table Last Commit
+  → Application Jump</pre>
+        <p>Bootloader는 전체 검증이 끝나기 전까지 Application Vector Table을 Flash에 기록하지 않습니다. 전송이 중단되거나 이미지가 손상되면 실행 가능한 시작점 자체를 만들지 않는 구조입니다.</p>
+        <div class="code-block"><div class="code-header"><span>Vector-last commit</span><span class="code-lang">C</span></div><pre>if (calculated_crc32 != expected_crc32)
+    return CRC_MISMATCH;
+
+if (!pending_vector_is_valid())
+    return INVALID_VECTOR;
+
+/* 전체 검증 성공 후 Vector Table 최종 기록 */
+storage_write(0U, pending_vector_table, 8U);</pre></div>
+        <pre class="diagram">[Staging Image]
+       │
+       ├─ Size
+       ├─ CRC32
+       └─ Vector validation
+              │ PASS
+              ▼
+[Application body write]
+              │
+              ▼
+[Vector table final commit]</pre>
+      </section>
+
+      <section class="section" id="fault">
+        <h2>02 Fault Injection 범위</h2>
+        <ul>
+          <li>UART Packet CRC16 오류 → NACK</li>
+          <li>잘못된 DATA Offset → 수신 거부</li>
+          <li>전체 Image CRC32 불일치 → 설치 거부</li>
+          <li>잘못된 MSP 또는 Reset Handler → 실행 거부</li>
+          <li>실패 후 Recovery Image 재설치</li>
+        </ul>
+        <div class="callout success"><h4>검증할 수 있었던 것</h4><p>손상되거나 구조적으로 유효하지 않은 이미지의 설치·실행 차단은 명확한 입력과 Oracle로 시험할 수 있었습니다.</p></div>
+      </section>
+
+      <section class="section" id="gap">
+        <h2>03 발견한 요구사항 Gap</h2>
+        <p>전원 차단 자체는 주입할 수 있었지만, 차단 이후 어떤 상태를 정상 복구로 볼지 승인된 정책이 없었습니다.</p>
+        <ul>
+          <li>A/B 이미지 구성</li>
+          <li>이전 정상 버전 자동 롤백</li>
+          <li>Boot 실패 횟수 기반 복구</li>
+          <li>전원 차단 이후 중단 위치 자동 재개</li>
+          <li>Signed Manifest와 ECU Identity</li>
+          <li>Anti-rollback 정책</li>
+        </ul>
+        <div class="callout gap"><h4>시험 가능 ≠ 판정 가능</h4><p>전원을 끊고 다시 켤 수 있다는 것과, 그 결과를 PASS/FAIL로 판정할 수 있다는 것은 별개입니다. 승인된 기대 상태와 복구 시간이 없으면 독립 Oracle이 성립하지 않습니다.</p></div>
+      </section>
+
+      <section class="section" id="decision">
+        <h2>04 QA 판단</h2>
+        <div class="code-block"><div class="code-header"><span>승인되지 않은 Oracle 차단</span><span class="code-lang">PYTHON</span></div><pre>pytest.skip(
+    "GAP_REQUIREMENT: boot-failure count, "
+    "rollback image, and power-loss recovery "
+    "oracles are not approved"
+)</pre></div>
+        <p>이를 제품 PASS 또는 FAIL로 만들지 않고 <code>GAP_REQUIREMENT</code>로 등록했습니다. 구현된 Vector-last 보호를 과소평가하지 않되, A/B 롤백과 전원 복구 정책까지 완성된 것처럼 표현하지 않았습니다.</p>
+        <div class="callout info"><h4>다음 승인 항목</h4><p>복구 대상 이미지, 허용 Boot 실패 횟수, 전원 복귀 후 최대 복구 시간, 롤백 버전 정책, Signed Manifest와 ECU Identity를 요구사항으로 먼저 확정해야 합니다.</p></div>
+      </section>
+    </article>
+  </main>
+
+  <footer class="post-footer"><span>© 2026 Dev.Embedded</span><a href="../blog.html?cat=troubleshooting">Troubleshooting 글 더 보기 →</a></footer>
+  <script src="troubleshooting-post.js"></script>
+</body>
+</html>
+

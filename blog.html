@@ -273,6 +273,115 @@
     ======================================== */
     const POSTS = [
       {
+        id: 8,
+        title: "USB-CAN은 열렸지만 프레임이 0건: 제품 결함과 HIL 인프라 장애 분리",
+        excerpt: "Seeed USB-CAN 연결 성공 뒤에도 CAN 프레임이 수신되지 않은 상황에서, 물리 계층·backend·채널을 순서대로 검증하고 False-Fail을 차단한 기록.",
+        category: "troubleshooting",
+        level: "Advanced",
+        date: "2026. 08. 27",
+        readTime: "8 min",
+        tags: ["CAN", "HIL", "Raspberry Pi", "python-can", "QA"],
+        url: "posts/usb-can-zero-frame-troubleshooting.html",
+        sections: [
+          { type: "h3", text: "🔍 문제 상황" },
+          { type: "p", text: "Raspberry Pi에서 Seeed USB-CAN 장치는 열렸지만 BMS·EVSE의 주기 프레임 0x100, 0x200이 한 건도 수신되지 않았습니다. 이 결과만으로는 제품과 시험환경 중 어느 쪽의 문제인지 판단할 수 없었습니다." },
+          { type: "h3", text: "📊 분석: 제품과 시험환경 분리" },
+          { type: "ul", items: [
+            "전원 OFF 종단저항 → USB 장치 매핑 → backend → baudrate/bitrate 순서로 preflight 고정",
+            "Seeed USB-CAN에 SocketCAN can0가 아닌 python-can seeedstudio backend 적용",
+            "이전 실행의 stale frame을 제거한 뒤 passive frame collection 수행"
+          ]},
+          { type: "code", lang: "Python", title: "Seeed USB-CAN 명시적 설정", code: `bus = can.Bus(
+    interface="seeedstudio",
+    channel="/dev/ttyUSB0",
+    baudrate=2_000_000,
+    bitrate=500_000,
+    timeout=0.1,
+)` },
+          { type: "h3", text: "✅ QA 판단" },
+          { type: "p", text: "실행된 HIL 시험이 0건이면 제품 FAIL이 아니라 BLOCKED_INFRA로 분류합니다. 시험환경 설정 표준화와 오판 방지를 완료하고 공식 재시험 전까지 상태를 유지했습니다." }
+        ]
+      },
+      {
+        id: 9,
+        title: "EVSE Application과 OTA Staging Flash 중첩: Linker Layout을 CI에서 차단",
+        excerpt: "2 MiB Flash의 Application 영역이 OTA Staging을 침범할 수 있었던 계산 오류를 수정하고, 주소·크기·Artifact SHA 검증을 CI Gate로 만든 과정.",
+        category: "troubleshooting",
+        level: "Expert",
+        date: "2026. 08. 27",
+        readTime: "8 min",
+        tags: ["STM32F429", "Linker Script", "OTA", "Flash", "CI"],
+        url: "posts/evse-flash-overlap-troubleshooting.html",
+        sections: [
+          { type: "h3", text: "🔍 문제 상황" },
+          { type: "p", text: "Application이 0x08020000부터 Flash 끝까지 잡혀 있어, 이미지가 커지면 0x08100000의 OTA Staging을 침범할 수 있었습니다." },
+          { type: "h3", text: "📊 원인과 수정" },
+          { type: "p", text: "전체 2 MiB에서 Bootloader만 제외하고 Application 크기를 계산한 것이 원인이었습니다. Staging과 Reserved를 분리해 Application을 896 KiB로 제한했습니다." },
+          { type: "code", lang: "LD", title: "수정된 Application 영역", code: `FLASH (rx) : ORIGIN = 0x08020000, LENGTH = 896K` },
+          { type: "h3", text: "✅ 재발 방지" },
+          { type: "ul", items: [
+            "CI에서 flash_origin == 0x08020000 검증",
+            "flash_end == 0x08100000 및 binary_size <= 0xE0000 검증",
+            "QA 승인 SHA와 Artifact Manifest가 PASS할 때만 결함 종료"
+          ]}
+        ]
+      },
+      {
+        id: 10,
+        title: "Cached BMS 상태를 새 ACK로 오인: 릴레이 조기 ON을 막는 Freshness Oracle",
+        excerpt: "START 이전의 charge_permit=1을 새 승인으로 오인하지 않도록 CAN sequence와 시간 순서를 검증하고, PE11 GPIO까지 독립 확인한 안전 시험.",
+        category: "troubleshooting",
+        level: "Expert",
+        date: "2026. 08. 27",
+        readTime: "10 min",
+        tags: ["CAN", "EVSE", "BMS", "HIL", "Functional Safety"],
+        url: "posts/bms-fresh-ack-relay-troubleshooting.html",
+        sections: [
+          { type: "h3", text: "🔍 문제 상황" },
+          { type: "p", text: "EVSE가 이전에 받은 charge_permit=1을 보관한 상태에서 START가 발생하면, 오래된 BMS 상태를 새 ACK로 오인해 릴레이가 너무 일찍 켜질 수 있었습니다." },
+          { type: "h3", text: "✅ 해결: 요청 이후의 새 프레임만 승인" },
+          { type: "ul", items: [
+            "BMS Main Frame마다 rx_sequence 증가",
+            "START → 0x201 Request → 새 0x100 ACK → PE11 ON의 시간 순서 강제",
+            "CHARGE_READY 또는 CHARGING 상태와 charge_permit을 함께 확인"
+          ]},
+          { type: "code", lang: "Python", title: "HIL 시간 순서 Oracle", code: `request = wait_for_frame(id=0x201, value=1)
+ack = wait_for_frame(id=0x100, after=request.timestamp)
+relay = wait_for_frame(id=0x200, relay_on=True, after=ack.timestamp)
+assert request.timestamp < ack.timestamp < relay.timestamp` },
+          { type: "h3", text: "📈 물리 출력 교차 검증" },
+          { type: "p", text: "0x200 relay=1은 소프트웨어 명령일 뿐이므로 OpenOCD로 PE11 GPIO를 확인했습니다. Timeout 시험에서는 BMS 프레임 차단 후 500~650 ms 안에 PE11이 LOW가 되는지도 검증했습니다." }
+        ]
+      },
+      {
+        id: 11,
+        title: "OTA 전원 차단 시험: 승인되지 않은 PASS 기준을 만들지 않은 이유",
+        excerpt: "Vector-last commit으로 불완전 이미지 실행을 막되, A/B 롤백과 전원 복구 Oracle 부재를 숨기지 않고 GAP_REQUIREMENT로 분류한 QA 기록.",
+        category: "troubleshooting",
+        level: "Expert",
+        date: "2026. 08. 27",
+        readTime: "9 min",
+        tags: ["OTA", "Bootloader", "Fault Injection", "CRC32", "QA"],
+        url: "posts/ota-power-loss-gap-troubleshooting.html",
+        sections: [
+          { type: "h3", text: "🛡️ 구현된 보호" },
+          { type: "p", text: "Bootloader는 Size·CRC32·Vector 검증이 모두 끝난 뒤 Application body를 쓰고, Vector Table 8 byte를 마지막에 기록합니다." },
+          { type: "code", lang: "C", title: "Vector-last commit", code: `if (calculated_crc32 != expected_crc32)
+    return CRC_MISMATCH;
+if (!pending_vector_is_valid())
+    return INVALID_VECTOR;
+storage_write(0U, pending_vector_table, 8U);` },
+          { type: "h3", text: "🔍 발견한 요구사항 Gap" },
+          { type: "ul", items: [
+            "A/B 이미지와 이전 정상 버전 자동 롤백 정책 부재",
+            "Boot 실패 횟수 및 전원 차단 위치 기반 복구 기준 미승인",
+            "Signed Manifest, ECU Identity, Anti-rollback 정책 미완성"
+          ]},
+          { type: "h3", text: "✅ QA 판단" },
+          { type: "p", text: "승인된 복구 Oracle이 없어 전원 차단 시험을 임의로 PASS/FAIL 처리하지 않고 GAP_REQUIREMENT로 등록했습니다. 구현된 보호와 미완성 정책의 경계를 명확히 남겼습니다." }
+        ]
+      },
+      {
         id: 1,
         title: "I2C 버스 Hang 현상 분석: MPU6050 + HMC5883L 동시 접근 트러블슈팅",
         title_en: "I2C Bus Hang Analysis: MPU6050 + HMC5883L Concurrent Access Troubleshooting",

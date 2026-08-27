@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>USB-CAN 0프레임 트러블슈팅 — Dev.Embedded</title>
+  <meta name="description" content="Seeed USB-CAN은 열렸지만 CAN 프레임이 0건이었던 HIL 환경을 분석하고 제품 결함과 인프라 장애를 분리한 기록.">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'%3E%3Crect width='48' height='48' rx='12' fill='%230ea5e9'/%3E%3Ctext x='24' y='32' text-anchor='middle' font-family='system-ui' font-weight='800' font-size='14' fill='%23fff'%3E%3E_%3C/text%3E%3C/svg%3E">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap">
+  <link rel="stylesheet" href="troubleshooting-post.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="topbar-brand" href="../blog.html"><span class="brand-mark">&lt;/&gt;</span><span>Dev<span class="brand-accent">.Embedded</span></span></a>
+    <a class="topbar-back" href="../blog.html">← Blog로 돌아가기</a>
+  </header>
+
+  <main>
+    <header class="post-header">
+      <p class="kicker">Troubleshooting · HIL Infrastructure</p>
+      <h1>USB-CAN은 열렸지만 프레임이 0건:<br>제품 결함과 HIL 장애 분리</h1>
+      <p class="dek">“장치가 열렸다”는 로그를 통신 성공으로 간주하지 않고, 물리 계층부터 backend까지 검증 순서를 고정해 False-Fail과 False-PASS를 함께 차단한 과정입니다.</p>
+      <div class="meta-row">
+        <span class="badge">Advanced</span><span>⏱ 8 min read</span><span>2026. 08. 27</span><span class="status blocked">BLOCKED_INFRA</span>
+      </div>
+      <div class="tag-list"><span class="tag">CAN</span><span class="tag">HIL</span><span class="tag">Raspberry Pi</span><span class="tag">python-can</span><span class="tag">QA</span></div>
+      <dl class="summary-grid">
+        <div class="summary-card"><dt>Target</dt><dd>STM32F446 BMS · STM32F429 EVSE</dd></div>
+        <div class="summary-card"><dt>Bench</dt><dd>Raspberry Pi 4 · Seeed USB-CAN</dd></div>
+        <div class="summary-card"><dt>핵심 판단</dt><dd>0 frame ≠ Product Fail</dd></div>
+      </dl>
+    </header>
+
+    <div class="tab-nav-wrap">
+      <nav class="tab-nav" aria-label="글 목차">
+        <a href="#symptom" class="active" data-section="symptom"><span class="tab-num">01</span>현상</a>
+        <a href="#analysis" data-section="analysis"><span class="tab-num">02</span>분석</a>
+        <a href="#guard" data-section="guard"><span class="tab-num">03</span>재발 방지</a>
+        <a href="#result" data-section="result"><span class="tab-num">04</span>QA 판단</a>
+      </nav>
+    </div>
+
+    <article class="post-content">
+      <section class="section" id="symptom">
+        <h2>01 현상</h2>
+        <p>Raspberry Pi에서 Seeed USB-CAN 장치가 정상적으로 열렸지만 BMS·EVSE의 주기 CAN 프레임은 한 건도 수신되지 않았습니다.</p>
+        <div class="code-block"><div class="code-header"><span>수집 로그</span><span class="code-lang">TEXT</span></div><pre>CAN adapter opened
+Selected channel: /dev/ttyUSB0
+Expected: 0x100, 0x200 periodic frames
+Actual: 0 frames</pre></div>
+        <p>처음에는 BMS 또는 EVSE 펌웨어 결함처럼 보였습니다. 하지만 bitrate, CAN-H/CAN-L 배선, 종단저항, USB serial channel, backend, stale frame, 실제 Flash 이미지 중 어느 하나만 잘못되어도 같은 현상이 나타납니다.</p>
+        <div class="callout warning"><h4>핵심 위험</h4><p>프레임이 없다는 관찰은 “제품이 프레임을 보내지 않았다”는 증거가 아닙니다. 수신 경로가 유효하다는 독립 증거가 먼저 필요합니다.</p></div>
+      </section>
+
+      <section class="section" id="analysis">
+        <h2>02 분석 순서와 원인 분리</h2>
+        <p>제품과 시험환경을 섞어 판단하지 않도록 확인 순서를 고정했습니다.</p>
+        <ol class="steps">
+          <li><strong>전원 OFF 상태에서 종단저항 확인</strong> — CAN-H와 CAN-L 사이의 합성 저항을 측정합니다.</li>
+          <li><strong>USB 장치 매핑 확인</strong> — Fixture ID와 실제 <code>/dev/ttyUSB*</code>를 대응시킵니다.</li>
+          <li><strong>backend와 serial baud 확인</strong> — Seeed 전용 backend와 2,000,000 baud를 명시합니다.</li>
+          <li><strong>CAN bitrate 적용값 확인</strong> — BMS·EVSE와 동일한 500 kbit/s인지 metadata로 남깁니다.</li>
+          <li><strong>stale buffer 제거 후 passive 수집</strong> — 이전 실행 데이터가 판정에 섞이지 않게 합니다.</li>
+          <li><strong>주기와 CAN ID 판정</strong> — 0x100, 0x200의 존재뿐 아니라 기대 주기까지 확인합니다.</li>
+        </ol>
+        <h3>Seeed backend 명시</h3>
+        <p>Seeed USB-CAN은 SocketCAN의 <code>can0</code>가 아니라 <code>python-can</code>의 <code>seeedstudio</code> backend를 사용해야 했습니다.</p>
+        <div class="code-block"><div class="code-header"><span>Adapter 설정과 stale frame 제거</span><span class="code-lang">PYTHON</span></div><pre>bus = can.Bus(
+    interface="seeedstudio",
+    channel="/dev/ttyUSB0",
+    baudrate=2_000_000,
+    bitrate=500_000,
+    timeout=0.1,
+)
+
+while bus.recv(timeout=0.0) is not None:
+    pass  # 이전 실행의 stale frame 제거</pre></div>
+      </section>
+
+      <section class="section" id="guard">
+        <h2>03 재발 방지</h2>
+        <ul>
+          <li>CAN backend와 channel을 자동 추측하지 않고 명시적으로 선택</li>
+          <li>SocketCAN/Seeed 자동 fallback 제거</li>
+          <li>실제 적용된 bitrate·baudrate·channel을 시험 metadata에 기록</li>
+          <li>HIL 실행 전 USB mapping preflight 추가</li>
+          <li>0-frame 또는 실행 0건을 PASS로 바꾸지 못하도록 차단</li>
+        </ul>
+        <div class="code-block"><div class="code-header"><span>실행되지 않은 시험 차단</span><span class="code-lang">PYTHON</span></div><pre>if tests == 0 or tests == skipped:
+    print("BLOCKED_INFRA: no executed HIL test")
+    return 4</pre></div>
+      </section>
+
+      <section class="section" id="result">
+        <h2>04 QA 판단</h2>
+        <p>시험환경이 정상임을 입증하기 전에는 제품 Fault를 판정할 근거가 없습니다. 따라서 공식 HIL 재시험 전까지 결과를 <code>BLOCKED_INFRA</code>로 유지했습니다.</p>
+        <div class="callout success"><h4>완료한 것</h4><p>시험환경 설정의 표준화, 실제 적용 파라미터의 증적화, 실행 0건 오판 방지 로직까지 완료했습니다.</p></div>
+        <div class="callout warning"><h4>완료했다고 말하지 않은 것</h4><p>공식 Bench에서 재시험하기 전까지 프레임 수신 문제가 해결됐다고 과장하지 않고 “공식 재시험 대기” 상태로 관리했습니다.</p></div>
+      </section>
+    </article>
+  </main>
+
+  <footer class="post-footer"><span>© 2026 Dev.Embedded</span><a href="../blog.html?cat=troubleshooting">Troubleshooting 글 더 보기 →</a></footer>
+  <script src="troubleshooting-post.js"></script>
+</body>
+</html>
+

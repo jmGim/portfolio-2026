@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>BMS Fresh ACK 릴레이 안전 트러블슈팅 — Dev.Embedded</title>
+  <meta name="description" content="Cached BMS charge_permit 상태를 새 ACK로 오인하지 않도록 CAN sequence와 HIL 시간 순서, PE11 GPIO를 검증한 기록.">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'%3E%3Crect width='48' height='48' rx='12' fill='%230ea5e9'/%3E%3Ctext x='24' y='32' text-anchor='middle' font-family='system-ui' font-weight='800' font-size='14' fill='%23fff'%3E%3E_%3C/text%3E%3C/svg%3E">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap">
+  <link rel="stylesheet" href="troubleshooting-post.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="topbar-brand" href="../blog.html"><span class="brand-mark">&lt;/&gt;</span><span>Dev<span class="brand-accent">.Embedded</span></span></a>
+    <a class="topbar-back" href="../blog.html">← Blog로 돌아가기</a>
+  </header>
+
+  <main>
+    <header class="post-header">
+      <p class="kicker">Troubleshooting · Functional Safety</p>
+      <h1>Cached BMS 상태를 새 ACK로 오인:<br>릴레이 조기 ON 차단</h1>
+      <p class="dek">CAN 프레임을 받았다는 사실만 확인하지 않고, START 이후 새 승인 프레임이 도착한 뒤 실제 PE11 출력이 켜졌는지 시간 순서로 증명했습니다.</p>
+      <div class="meta-row"><span class="badge">Expert</span><span>⏱ 10 min read</span><span>2026. 08. 27</span><span class="status pass">SAFETY ORACLE</span></div>
+      <div class="tag-list"><span class="tag">CAN</span><span class="tag">EVSE</span><span class="tag">BMS</span><span class="tag">HIL</span><span class="tag">OpenOCD</span></div>
+      <dl class="summary-grid">
+        <div class="summary-card"><dt>Risk</dt><dd>Cached permit에 의한 Relay 조기 ON</dd></div>
+        <div class="summary-card"><dt>Freshness</dt><dd>Request 전후 rx_sequence 비교</dd></div>
+        <div class="summary-card"><dt>Physical Oracle</dt><dd>GPIOE PE11 ODR</dd></div>
+      </dl>
+    </header>
+
+    <div class="tab-nav-wrap">
+      <nav class="tab-nav" aria-label="글 목차">
+        <a href="#risk" class="active" data-section="risk"><span class="tab-num">01</span>위험</a>
+        <a href="#sequence" data-section="sequence"><span class="tab-num">02</span>시퀀스</a>
+        <a href="#oracle" data-section="oracle"><span class="tab-num">03</span>HIL Oracle</a>
+        <a href="#guard" data-section="guard"><span class="tab-num">04</span>재발 방지</a>
+      </nav>
+    </div>
+
+    <article class="post-content">
+      <section class="section" id="risk">
+        <h2>01 위험 시나리오</h2>
+        <p>EVSE가 이전에 수신한 <code>charge_permit=1</code> 값을 보관한 상태에서 새로운 START 요청이 발생하면, 오래된 BMS 상태를 이번 요청에 대한 ACK로 오인할 가능성이 있었습니다.</p>
+        <p>통신 자체가 정상이어도 이벤트 순서가 잘못되면 릴레이가 너무 일찍 켜질 수 있습니다. 따라서 “필드 값이 1인가”가 아니라 “이번 요청 이후 새로 받은 값인가”를 판단해야 했습니다.</p>
+        <div class="callout warning"><h4>금지 조건</h4><p>START 이전에 수신한 cached <code>0x100</code>만으로 PE11을 ON해서는 안 됩니다.</p></div>
+      </section>
+
+      <section class="section" id="sequence">
+        <h2>02 안전 시퀀스 정의</h2>
+        <pre class="diagram">Time ─────────────────────────────────────────────►
+
+EVSE    START ── 0x201 Charge Request ─────────────
+BMS                         └─ 0x100 Fresh ACK ────
+EVSE                                           └─ PE11 ON</pre>
+        <ol class="steps">
+          <li>START 입력을 감지합니다.</li>
+          <li>EVSE가 <code>0x201 Charge Request</code>를 송신합니다.</li>
+          <li>요청 이후에 도착한 새로운 BMS <code>0x100</code>만 ACK 후보로 인정합니다.</li>
+          <li><code>charge_permit=1</code>과 BMS State가 CHARGE_READY 또는 CHARGING인지 확인합니다.</li>
+          <li>모든 조건이 만족된 뒤 EVSE Relay PE11을 ON합니다.</li>
+        </ol>
+        <h3>프레임 Freshness 판정</h3>
+        <div class="code-block"><div class="code-header"><span>bms_has_acknowledged()</span><span class="code-lang">C</span></div><pre>static bool bms_has_acknowledged(
+    const evse_status_t *status)
+{
+    const bool accepted_state =
+        status-&gt;bms.bms_state == CAN_BMS_STATE_CHARGE_READY ||
+        status-&gt;bms.bms_state == CAN_BMS_STATE_CHARGING;
+
+    return status-&gt;bms.online &amp;&amp;
+           status-&gt;bms.charge_permit &amp;&amp;
+           status-&gt;charge_request_transmitted &amp;&amp;
+           status-&gt;bms.rx_sequence !=
+               status-&gt;charge_request_rx_sequence &amp;&amp;
+           accepted_state;
+}</pre></div>
+      </section>
+
+      <section class="section" id="oracle">
+        <h2>03 HIL Oracle: 통신 상태와 물리 출력 분리</h2>
+        <p>먼저 CAN trace에서 Request, Fresh ACK, Relay command가 순서대로 발생했는지 검증했습니다.</p>
+        <div class="code-block"><div class="code-header"><span>CAN 시간 순서 검증</span><span class="code-lang">PYTHON</span></div><pre>request = wait_for_frame(id=0x201, value=1)
+ack = wait_for_frame(id=0x100, after=request.timestamp)
+relay = wait_for_frame(id=0x200, relay_on=True,
+                       after=ack.timestamp)
+
+assert request.timestamp &lt; ack.timestamp &lt; relay.timestamp</pre></div>
+        <p>하지만 <code>0x200 relay=1</code>은 실제 접점 피드백이 아니라 소프트웨어 명령입니다. CAN 판정과 독립적으로 OpenOCD를 통해 GPIOE ODR의 PE11 bit를 확인했습니다.</p>
+        <div class="code-block"><div class="code-header"><span>PE11 물리 출력 교차 검증</span><span class="code-lang">PYTHON</span></div><pre>gpioe_odr = openocd.read_word(0x40021014)
+assert gpioe_odr &amp; (1 &lt;&lt; 11)</pre></div>
+        <h3>Timeout 안전 복귀</h3>
+        <p>BMS 프레임을 의도적으로 차단한 뒤, 정의된 시간 안에 릴레이 출력이 실제 LOW로 복귀하는지 확인했습니다.</p>
+        <div class="code-block"><div class="code-header"><span>Safe-off Oracle</span><span class="code-lang">PYTHON</span></div><pre>assert 500.0 &lt;= safe_off_elapsed_ms &lt;= 650.0
+assert gpioe_odr &amp; (1 &lt;&lt; 11) == 0</pre></div>
+      </section>
+
+      <section class="section" id="guard">
+        <h2>04 재발 방지</h2>
+        <ul>
+          <li>Cached state와 fresh ACK를 Sequence로 분리</li>
+          <li>Request·ACK·Relay의 timestamp 순서 검사</li>
+          <li>CAN software status와 실제 GPIO를 독립 Oracle로 검증</li>
+          <li>BMS/EVSE 통신 차단 자극과 복구 절차를 시험 명세에 포함</li>
+          <li>Actuation 시험은 Hard Interlock 승인 후에만 실행</li>
+        </ul>
+        <div class="callout success"><h4>검증 기준의 변화</h4><p>“CAN 통신 성공”에서 “이번 요청 이후의 승인 + 올바른 상태 + 실제 출력 + Timeout 복귀”로 안전 판정 기준을 확장했습니다.</p></div>
+      </section>
+    </article>
+  </main>
+
+  <footer class="post-footer"><span>© 2026 Dev.Embedded</span><a href="../blog.html?cat=troubleshooting">Troubleshooting 글 더 보기 →</a></footer>
+  <script src="troubleshooting-post.js"></script>
+</body>
+</html>
+
