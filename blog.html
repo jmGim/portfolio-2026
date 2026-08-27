@@ -273,6 +273,72 @@
     ======================================== */
     const POSTS = [
       {
+        id: 13,
+        title: "STM32F411 짐벌 리소스 분석: I2C 12.6% 병목과 512KB OTA 파티셔닝",
+        excerpt: "20ms 제어 주기에서 센서 버스가 차지하는 시간을 정량화하고, 512KB Flash를 Bootloader·Application·Download Slot으로 분리한 설계 근거를 정리했습니다.",
+        category: "architecture",
+        level: "Expert",
+        date: "2026. 08. 27",
+        readTime: "12 min",
+        tags: ["STM32F411", "FreeRTOS", "I2C Timing", "Flash", "OTA"],
+        url: "posts/stm32-gimbal-resource-analysis.html",
+        sections: [
+          { type: "h3", text: "🏗️ Orchestrator와 의존성 분리" },
+          { type: "p", text: "ap.c가 Driver와 Service의 실행 순서를 조율하고, gyro.c·mag.c·imu_service.c·gimbal_control.c는 서로를 직접 참조하지 않도록 계층을 분리했습니다." },
+          { type: "h3", text: "💾 512KB Flash Partition" },
+          { type: "code", lang: "Text", title: "Address-based Memory Map", code: `0x08000000  Bootloader       16 KiB
+0x08004000  Active App      240 KiB
+0x08040000  Download Slot   256 KiB
+0x08080000  Flash End` },
+          { type: "h3", text: "⏱️ 20ms Control Loop 분석" },
+          { type: "ul", items: [
+            "MPU6050 18-byte transaction: 1.62ms",
+            "HMC5883L 10-byte transaction: 0.90ms",
+            "I2C 합계 2.52ms = 20ms 주기의 12.6%",
+            "FPU 기반 제어 연산은 0.02ms 미만으로 측정되어 주 병목이 Serial Bus임을 확인"
+          ]},
+          { type: "h3", text: "✅ 설계 판단" },
+          { type: "p", text: "연산 최적화보다 I2C Fast Mode 또는 SPI 전환이 성능 개선에 더 직접적이며, OTA 이미지는 기존 Application과 분리된 Download Slot에 먼저 저장해야 한다는 근거를 확보했습니다." }
+        ]
+      },
+      {
+        id: 12,
+        title: "STM32 3축 짐벌: FreeRTOS 실시간 제어와 Fail-Safe 아키텍처",
+        excerpt: "MPU6050·HMC5883L 9축 센서 융합부터 Event-Driven Task, float PWM 보간, Interrupt Storm과 UART Starvation 복구까지 전체 제어 경로를 정리했습니다.",
+        category: "architecture",
+        level: "Expert",
+        date: "2026. 08. 27",
+        readTime: "14 min",
+        tags: ["STM32F411", "FreeRTOS", "Sensor Fusion", "PWM", "Fail-Safe"],
+        url: "posts/stm32-gimbal-failsafe-architecture.html",
+        sections: [
+          { type: "h3", text: "🏗️ 시스템 아키텍처" },
+          { type: "p", text: "Driver–Service–Application 계층과 FreeRTOS 6개 Task로 센서 획득, 자세 추정, 서보 제어, CLI 진단의 책임을 분리했습니다." },
+          { type: "h3", text: "⚡ 실시간 센서 획득" },
+          { type: "ul", items: [
+            "MPU6050: 50Hz Data Ready EXTI → ISR에서 Semaphore release → gyroSystemTask 실행",
+            "HMC5883L: 약 66ms(15Hz) Time-Driven polling",
+            "I2C1 Mutex로 두 Sensor Task의 HAL 접근 직렬화"
+          ]},
+          { type: "h3", text: "📐 Sensor Fusion과 Actuation" },
+          { type: "p", text: "자이로 96%·가속도 4% 상보 필터와 지자기 Tilt Compensation으로 Roll/Pitch/Yaw를 추정하고, float PWM과 k_gain 0.15 보간으로 SG90 지터를 완화했습니다." },
+          { type: "code", lang: "C", title: "Event-Driven IMU Task", code: `if (osSemaphoreAcquire(GyroReadySemHandle,
+                       osWaitForever) == osOK) {
+    const float dt = elapsed_ms / 1000.0f;
+    if (!imu_update_math(dt)) {
+        set_imu_fault();
+        osDelay(100);
+    }
+}` },
+          { type: "h3", text: "🛡️ Fail-Safe 트러블슈팅" },
+          { type: "ul", items: [
+            "PA4 Floating으로 발생한 Interrupt Storm을 Pull-down과 NVIC Priority 5로 차단",
+            "I2C Timeout 뒤 SCL 9-clock toggle과 재초기화로 수동 복구",
+            "Blocking UART printf로 인한 CLI Starvation을 Task 우선순위·100ms 제한·Binary Monitor 분리로 해결"
+          ]}
+        ]
+      },
+      {
         id: 8,
         title: "USB-CAN은 열렸지만 프레임이 0건: 제품 결함과 HIL 인프라 장애 분리",
         excerpt: "Seeed USB-CAN 연결 성공 뒤에도 CAN 프레임이 수신되지 않은 상황에서, 물리 계층·backend·채널을 순서대로 검증하고 False-Fail을 차단한 기록.",

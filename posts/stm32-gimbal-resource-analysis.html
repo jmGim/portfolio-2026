@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>STM32F411 짐벌 리소스 분석 — Dev.Embedded</title>
+  <meta name="description" content="STM32F411 3축 짐벌의 20ms 제어 루프 I2C 점유율과 512KB OTA Flash 파티셔닝, Orchestrator 기반 의존성 분리를 분석합니다.">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'%3E%3Crect width='48' height='48' rx='12' fill='%230ea5e9'/%3E%3Ctext x='24' y='32' text-anchor='middle' font-family='system-ui' font-weight='800' font-size='14' fill='%23fff'%3E%3E_%3C/text%3E%3C/svg%3E">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap">
+  <link rel="stylesheet" href="troubleshooting-post.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="topbar-brand" href="../blog.html"><span class="brand-mark">&lt;/&gt;</span><span>Dev<span class="brand-accent">.Embedded</span></span></a>
+    <a class="topbar-back" href="../blog.html">← Blog로 돌아가기</a>
+  </header>
+
+  <main>
+    <header class="post-header">
+      <p class="kicker">Deep Dive · Resource Budget · OTA</p>
+      <h1>STM32F411 짐벌 리소스 분석:<br>I2C 12.6% 병목과 512KB Flash 설계</h1>
+      <p class="dek">“FPU가 느린가?”라는 추측 대신 20ms 제어 주기의 시간을 항목별로 계산하고, 실행 이미지와 OTA 다운로드 이미지를 주소 경계로 분리해 설계 판단의 근거를 만들었습니다.</p>
+      <div class="meta-row"><span class="badge">Expert</span><span>⏱ 12 min read</span><span>2026. 08. 27</span><span class="status pass">DATA-DRIVEN DESIGN</span></div>
+      <div class="tag-list"><span class="tag">STM32F411</span><span class="tag">FreeRTOS</span><span class="tag">I2C Timing</span><span class="tag">Flash</span><span class="tag">OTA</span></div>
+      <dl class="summary-grid">
+        <div class="summary-card"><dt>Control Period</dt><dd>20ms · 50Hz</dd></div>
+        <div class="summary-card"><dt>I2C Budget</dt><dd>2.52ms · 12.6%</dd></div>
+        <div class="summary-card"><dt>Flash Layout</dt><dd>16KiB Boot · 240KiB App · 256KiB Slot</dd></div>
+      </dl>
+      <figure class="hero-media">
+        <img src="../images/1.STM32_3Axis_Gimbal_System_img.png" alt="STM32F411 기반 3축 짐벌 제어 시스템" loading="eager">
+        <figcaption>동작 구현 이후 시간과 메모리 예산을 정량화해 다음 최적화 지점을 결정했습니다.</figcaption>
+      </figure>
+    </header>
+
+    <div class="tab-nav-wrap">
+      <nav class="tab-nav" aria-label="글 목차">
+        <a href="#overview" class="active" data-section="overview"><span class="tab-num">01</span>분석 목적</a>
+        <a href="#architecture" data-section="architecture"><span class="tab-num">02</span>Architecture</a>
+        <a href="#flash" data-section="flash"><span class="tab-num">03</span>Flash</a>
+        <a href="#timing" data-section="timing"><span class="tab-num">04</span>Timing</a>
+        <a href="#decision" data-section="decision"><span class="tab-num">05</span>설계 판단</a>
+        <a href="#reflection" data-section="reflection"><span class="tab-num">06</span>고찰</a>
+      </nav>
+    </div>
+
+    <article class="post-content">
+      <section class="section" id="overview">
+        <h2>01 왜 리소스 예산을 따로 분석했나</h2>
+        <p>3축 짐벌은 MPU6050 50Hz 샘플을 기준으로 20ms 안에 센서 수집, 자세 계산과 PWM 갱신을 마쳐야 합니다. 정상 동작만 확인하면 다음 성능 문제에서 연산, 통신, 스케줄링 중 무엇을 먼저 바꿔야 할지 결정할 수 없습니다.</p>
+        <p>따라서 두 가지를 숫자로 고정했습니다.</p>
+        <ol class="steps">
+          <li><strong>시간 예산</strong> — I2C wire time과 FPU 연산 시간이 20ms 중 얼마를 사용하는가?</li>
+          <li><strong>메모리 예산</strong> — 512KB Flash에서 실행 이미지와 다운로드 이미지를 어떻게 격리할 것인가?</li>
+        </ol>
+        <div class="callout info"><h4>분석 조건</h4><p>System Clock 84MHz, I2C Standard Mode 100kHz, MPU6050 14-byte burst read, HMC5883L 6-byte burst read 조건입니다.</p></div>
+      </section>
+
+      <section class="section" id="architecture">
+        <h2>02 Orchestrator와 의존성 방향</h2>
+        <p>초기에는 센서, 서비스와 CLI 모듈이 서로의 헤더를 참조하면서 원형 의존성이 생기기 쉬웠습니다. 이를 해결하기 위해 최상위 <code>ap.c</code>가 실행 순서와 데이터 전달을 조율하는 Orchestrator 역할을 담당하도록 변경했습니다.</p>
+        <pre class="diagram">                         ap.c
+                    [Orchestrator]
+                  호출 순서 · 상태 조율
+                    /            \
+                   ▼              ▼
+        gyro.c / mag.c      imu_service.c
+        [Sensor Driver]     [Pure Calculation]
+                   \              /
+                    ▼            ▼
+                   gimbal_control.c
+                   [Actuation Service]
+
+의존성 방향: Application → Service → Driver
+금지: Driver ↔ Service 상호 include</pre>
+        <ul>
+          <li>Driver는 레지스터 접근과 Raw data 반환만 담당</li>
+          <li>Service는 입력 구조체를 받아 보정·융합하고 결과를 반환</li>
+          <li>CLI는 Application API를 통해 상태를 조회하며 Sensor Driver를 직접 호출하지 않음</li>
+          <li>모듈별 테스트와 센서 교체 시 변경 범위를 계층 내부로 제한</li>
+        </ul>
+      </section>
+
+      <section class="section" id="flash">
+        <h2>03 STM32F411 512KB OTA Flash Partition</h2>
+        <p>외장 저장장치 없이 새 펌웨어를 먼저 수신하기 위해 실행 영역과 Download Slot을 물리적으로 분리했습니다. 주소는 STM32F411의 sector 경계에 맞췄습니다.</p>
+        <div class="flash-strip" role="img" aria-label="512KiB Flash 중 Bootloader 16KiB, Active Application 240KiB, Download Slot 256KiB">
+          <span class="boot" title="Bootloader 16KiB"></span><span class="app" title="Active Application 240KiB"></span><span class="download" title="Download Slot 256KiB"></span>
+        </div>
+        <div class="flash-legend">
+          <div><strong>Bootloader · 16KiB</strong>0x08000000–0x08004000<br>Sector 0</div>
+          <div><strong>Active App · 240KiB</strong>0x08004000–0x08040000<br>Sectors 1–5</div>
+          <div><strong>Download Slot · 256KiB</strong>0x08040000–0x08080000<br>Sectors 6–7</div>
+        </div>
+        <table class="evidence-table">
+          <thead><tr><th>영역</th><th>역할</th><th>쓰기 정책</th></tr></thead>
+          <tbody>
+            <tr><td>Bootloader</td><td>이미지 유효성 검사와 Application Jump</td><td>일반 OTA 과정에서는 보존</td></tr>
+            <tr><td>Active Application</td><td>짐벌 제어, Sensor Fusion, CLI 실행</td><td>Download 검증 완료 뒤 갱신 대상</td></tr>
+            <tr><td>Download Slot</td><td>ESP-01로 받은 새 BIN 임시 저장</td><td>실행 이미지와 분리하여 수신 중 손상 격리</td></tr>
+          </tbody>
+        </table>
+        <div class="callout warning"><h4>정확한 안전성 경계</h4><p>별도 Download Slot은 다운로드 도중 기존 Application을 보호하지만, 이것만으로 완전한 A/B 자동 롤백이 되는 것은 아닙니다. 복사 중 전원 차단 복구와 Boot 실패 정책은 별도 요구사항과 Oracle이 필요합니다.</p></div>
+      </section>
+
+      <section class="section" id="timing">
+        <h2>04 20ms 제어 루프 Timing Breakdown</h2>
+        <p>I2C 100kHz에서는 ACK를 포함한 1 byte 전송에 최소 9 clock, 즉 약 90µs가 필요합니다. Address와 register phase를 포함한 transaction byte 수를 기준으로 wire time을 산정했습니다.</p>
+        <div class="code-block"><div class="code-header"><span>I2C wire-time 계산</span><span class="code-lang">TEXT</span></div><pre>1 byte = 9 bits / 100,000 bits/s = 90 µs
+
+MPU6050: 18 bytes × 90 µs = 1.62 ms
+HMC5883L: 10 bytes × 90 µs = 0.90 ms
+I2C total                  = 2.52 ms
+
+2.52 ms / 20 ms × 100     = 12.6%</pre></div>
+        <div class="timing-chart" role="img" aria-label="20ms 제어 주기 점유율: MPU6050 8.1%, HMC5883L 4.5%, FPU 계산 0.1% 미만, 잔여 87.3% 이상">
+          <div class="timing-row"><span>MPU6050 I2C</span><div class="timing-track"><div class="timing-fill" style="--share:8.1%"></div></div><strong>8.1%</strong></div>
+          <div class="timing-row"><span>HMC5883L I2C</span><div class="timing-track"><div class="timing-fill" style="--share:4.5%"></div></div><strong>4.5%</strong></div>
+          <div class="timing-row"><span>FPU 제어 연산</span><div class="timing-track"><div class="timing-fill" style="--share:.1%"></div></div><strong>&lt;0.1%</strong></div>
+          <div class="timing-row"><span>잔여 Budget</span><div class="timing-track"><div class="timing-fill" style="--share:87.3%"></div></div><strong>&gt;87.3%</strong></div>
+        </div>
+        <div class="callout info"><h4>해석 시 주의</h4><p>2.52ms는 명시된 byte 수를 이용한 이론적 wire-time입니다. HAL 호출, Task wake-up과 bus 상태 대기까지 포함한 실제 worst-case는 로직 애널라이저와 RTOS trace로 별도 측정해야 합니다.</p></div>
+      </section>
+
+      <section class="section" id="decision">
+        <h2>05 데이터가 바꾼 설계 판단</h2>
+        <p>상보 필터와 짐벌 제어 계산은 0.02ms 미만으로 관측된 반면, 두 센서의 I2C wire-time은 2.52ms였습니다. 이 조건에서는 수식 몇 줄을 줄이는 것보다 Serial Bus를 개선하는 편이 더 직접적입니다.</p>
+        <table class="evidence-table">
+          <thead><tr><th>개선 후보</th><th>기대 효과</th><th>검토 사항</th></tr></thead>
+          <tbody>
+            <tr><td>I2C Fast Mode 400kHz</td><td>wire-time 이론상 최대 1/4</td><td>센서 지원, pull-up, 배선 정전용량과 파형 검증</td></tr>
+            <tr><td>SPI 센서 전환</td><td>더 높은 대역폭과 full-duplex 선택지</td><td>핀 수, Driver 변경, 신규 H/W 영향</td></tr>
+            <tr><td>DMA 또는 비동기 I/O</td><td>CPU blocking 시간 감소</td><td>완료 ISR, buffer lifetime, Task 동기화 복잡도</td></tr>
+            <tr><td>수학 연산 미세 최적화</td><td>현재 조건에서는 제한적</td><td>정확도 손실 대비 얻는 시간이 작음</td></tr>
+          </tbody>
+        </table>
+        <div class="callout success"><h4>우선순위</h4><p>측정 근거에 따라 “연산 코드 최적화”보다 “버스 속도·통신 방식·비동기 처리”를 다음 개선 후보로 선정할 수 있습니다.</p></div>
+      </section>
+
+      <section class="section" id="reflection">
+        <h2>06 고찰: 정상 동작에서 설명 가능한 설계로</h2>
+        <p>이 프로젝트에서 얻은 가장 큰 교훈은 감각적인 튜닝보다 예산을 먼저 수치화해야 한다는 점입니다. 시간과 주소는 명확한 경계를 제공하며, 그 경계를 코드와 시험 항목으로 옮기면 설계 판단을 재현할 수 있습니다.</p>
+        <ul>
+          <li><strong>의존성</strong> — Orchestrator를 기준으로 호출 방향을 한쪽으로 제한</li>
+          <li><strong>시간</strong> — 20ms Deadline을 통신·연산·잔여 Budget으로 분해</li>
+          <li><strong>메모리</strong> — Linker 주소와 OTA 쓰기 대상을 sector 경계로 분리</li>
+          <li><strong>안전성</strong> — 구현된 staging 보호와 미구현 A/B rollback을 구분</li>
+        </ul>
+        <div class="callout info"><h4>연결해서 읽기</h4><p><a href="stm32-gimbal-failsafe-architecture.html"><strong>Interrupt Storm, I2C 9-clock Recovery와 UART Starvation을 포함한 짐벌 Fail-Safe 종합 글 →</strong></a></p></div>
+      </section>
+    </article>
+  </main>
+
+  <footer class="post-footer"><span>© 2026 Dev.Embedded</span><a href="../blog.html?cat=architecture">Architecture 글 더 보기 →</a></footer>
+  <script src="troubleshooting-post.js"></script>
+</body>
+</html>
+
