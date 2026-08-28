@@ -711,6 +711,7 @@ float pid_update(float setpoint, float current) {
         date: "2026. 08. 10",
         readTime: "12 min",
         tags: ["Verilog", "FPGA", "FSM", "DHT11", "Metastability", "Synchronizer"],
+        url: "posts/fpga-dht11-uart-reliability.html",
         sections: [
           { type: "h3", text: "🔍 문제 상황" },
           { type: "p", text: "Basys3 FPGA(100MHz)에서 DHT11 온습도 센서를 구동할 때, 습도 데이터가 물리적 한계치 100%를 초과한 값(130, 178 등)으로 수신되며 통신이 간헐적으로 끊김." },
@@ -731,33 +732,34 @@ wire dht_safe = dht_sync_2;    // 이후 FSM에서 이 신호만 사용` },
           { type: "p", text: "FSM 카운터를 '무조건 1us마다 증가, Edge 이벤트 시에만 r_wait_cnt <= 0으로 리셋'하는 단일 카운터 구조로 전면 개편하여 타이밍 안정성 확보." },
           { type: "h3", text: "📈 결과" },
           { type: "ul", items: [
-            "습도 100% 초과 쓰레기 값 완전 해소",
-            "Checksum(CRC) 검증 통과율 100% 달성",
-            "오실로스코프로 40bit 파형과 FPGA 레지스터 값 교차 검증 완료"
+            "7-state Main FSM + 2-state Read Sub-FSM으로 프로토콜 책임 분리",
+            "ACK/bit edge 대기 구간에 100µs·150µs 기준의 Timeout 복귀 경로 5개 추가",
+            "40-bit 수신 뒤 Checksum이 일치할 때만 data_valid 1-clock pulse 생성"
           ]}
         ]
       },
       {
         id: 7,
-        title: "FPGA에서 나눗셈 연산자(/, %) 사용 금지 — Setup Time Violation과 UART 데드락",
-        title_en: "Why You Must Avoid Division Operators in FPGA: Setup Time Violation and UART Deadlock",
-        excerpt: "Verilog에서 temp / 10 한 줄이 UART 송신 모듈을 완전히 뻗게 만든 원인과, BCD 디코더 로직으로 대체하여 117-byte 전송 신뢰성 100%를 확보한 과정.",
-        excerpt_en: "How a single temp / 10 line caused complete UART TX deadlock in FPGA, and how replacing it with hardware-friendly BCD decoder logic achieved 100% transmission reliability.",
+        title: "FPGA UART 오류 분석: 16-bit Framing 버그와 온습도 BCD 경로 개선",
+        title_en: "FPGA UART Error Analysis: 16-bit Framing Bug and Sensor BCD Path Refactoring",
+        excerpt: "두 RTL 커밋을 비교해 TX가 16 data bit·153600 baud로 동작하던 오류를 8N1·9600bps로 수정하고, 온습도 /10 경로를 비교·뺄셈 BCD로 바꾼 과정을 분석했습니다.",
+        excerpt_en: "A source-level audit of two RTL commits: correcting a 16-data-bit/153600-baud TX path to 8N1/9600bps and refactoring sensor decimal conversion.",
         category: "firmware",
         level: "Advanced",
         date: "2026. 08. 08",
         readTime: "8 min",
         tags: ["Verilog", "FPGA", "UART", "Setup Time", "BCD", "Timing"],
+        url: "posts/fpga-dht11-uart-reliability.html",
         sections: [
           { type: "h3", text: "🔍 문제 상황" },
-          { type: "p", text: "117-byte의 통합 데이터(RTC 시간, 온습도, 타겟 온도 등)를 UART로 전송할 때, 특정 값(%, = 등)이 깨지거나 송신 모듈 자체가 완전히 뻗어버리는 데드락 발생." },
-          { type: "h3", text: "📊 원인 분석: Setup Time Violation" },
+          { type: "p", text: "이전 커밋의 UART TX는 8-bit 입력을 16-bit 레지스터에 적재하고 bit counter가 15까지 진행했으며, TX baud divider에도 RX용 16배 oversampling 나눗셈이 남아 있었습니다." },
+          { type: "h3", text: "📊 Git Commit 기반 원인 분석" },
           { type: "ul", items: [
-            "소프트웨어 관점으로 작성한 14비트 나눗셈 연산(temp / 10)이 FPGA 내부에서 거대한 조합 논리 회로를 생성",
-            "전기가 이 회로를 통과하는 데 클럭 주기(10ns)보다 긴 시간이 걸려, 클럭 엣지 시점에 찌꺼기 값을 래치",
-            "이것이 바로 Setup Time Violation — MCU에서는 발생하지 않는 FPGA 고유의 문제"
+            "이전 TX: Start + 16 data bits + Stop, baud tick은 목표 9600의 16배",
+            "현재 TX: Start + 8 data bits + Stop의 8N1 framing, 9600bps divider 적용",
+            "온도·습도의 /10·%10은 비교/뺄셈 BCD로 교체했지만 time split과 FND에는 연산자가 남아 있음"
           ]},
-          { type: "h3", text: "✅ 해결: 하드웨어 친화적 BCD 디코더" },
+          { type: "h3", text: "✅ 해결: 8N1 FSM + Snapshot + BCD 경로" },
           { type: "code", lang: "Verilog", title: "나눗셈 제거 → BCD 디코더", code: `// ❌ 위험: 거대한 조합 논리 생성
 // wire [3:0] tens = temp / 10;
 // wire [3:0] ones = temp % 10;
@@ -773,9 +775,10 @@ always @(*) begin
 end` },
           { type: "h3", text: "📈 결과" },
           { type: "ul", items: [
-            "나눗셈 연산자 완전 제거 → Setup Time Violation 해소",
-            "117-byte UART 전송 신뢰성 100% 확보 (ComPortMaster로 패킷 유실 0건 확인)",
-            "교훈: FPGA에서는 '동작하는 코드'가 아니라 '타이밍을 만족하는 회로'를 작성해야 한다"
+            "문자당 data bit 16→8로 수정하여 framing overhead 44.4% 감소",
+            "6개 필드를 전송 시작 시 snapshot한 뒤 117-byte ASCII frame으로 직렬화",
+            "9600bps 8N1 기준 frame wire-time 121.875ms, 3초 센서 주기 대비 약 4.06%",
+            "Vivado timing report가 저장소에 없어 Slack 개선 수치는 미확정으로 관리"
           ]}
         ]
       }

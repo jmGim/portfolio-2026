@@ -1699,46 +1699,73 @@ void gimbalExecuteCombinedControl(void) {
       },
       verilog: {
         title: "Basys3 기반 스마트 공조 제어 시스템",
-        subtitle: "FSM 타이밍 최적화 및 117-byte UART 파이프라인 신뢰성 확보",
+        subtitle: "DHT11 Fail-Safe FSM 및 117-byte UART 파이프라인 소스 검증",
         image: "images/3.Verilog_Air_Conditioner_img.png",
-        brief: "FSM 타이밍 / BCD 디코더 / UART 117B 무결 전송",
+        brief: "7-State DHT11 FSM / 5 Timeout Paths / UART 8N1·117B",
         num: 3,
-        tags: ["Verilog HDL", "FPGA (Basys3)", "DHT11", "UART", "PWM", "FSM"],
+        tags: ["Verilog HDL", "FPGA (Basys3)", "DHT11", "UART", "CDC", "FSM", "Fail-Safe"],
         period: "202X.XX ~ 202X.XX",
         target: "임베디드 SW 엔지니어 (차량 전장 및 방산 도메인)",
-        hw: "Xilinx Basys3 (Artix-7), DHT11, DS1302(RTC), DC Motor, Rotary Encoder, 7-Seg FND",
-        summary: "100MHz 클럭 환경에서 발생하는 비동기 노이즈와 타이밍 위반(Setup Time Violation)을 FSM 단일 카운터 구조와 고속 BCD 디코더 로직으로 해결. 센서 제어부터 117-byte 다중 UART 프레임 전송까지 데이터 신뢰성 100%를 확보한 통합 스마트 공조 시스템을 설계 및 구현했습니다.",
+        hw: "Xilinx Basys3 (Artix-7), DHT11, UART, 7-Seg FND (Motor/Rotary/RTC는 저장소 내 단계적 통합 상태)",
+        summary: "100MHz Basys3에서 DHT11 Single-wire 프로토콜을 7-State FSM으로 구현하고, 2-Stage Synchronizer·Open-Drain High-Z·5개 Timeout 복귀 경로로 비동기 센서 입력을 방어했습니다. Git 커밋 비교를 통해 UART TX의 16-bit framing 및 16배 baud 오류를 8N1·9600bps로 수정했으며, 6개 필드를 snapshot한 뒤 117-byte ASCII frame으로 직렬화하는 파이프라인을 구성했습니다.",
         role: [
-          "100% 개인 프로젝트 (센서 프로토콜 파싱, 하드웨어 타이밍 설계, UART 파이프라인, 오실로스코프 검증)",
-          "100MHz 클럭 기반 1us tick generator 직접 설계 → DHT11 Handshaking 프로토콜(Start 18ms → ACK 80us) 구현",
-          "6종 이기종 데이터를 레지스터 래치 → 117-byte ASCII 변환 → UART 9600bps 순차 전송 파이프라인 구축",
-          "온도 편차 기반 3단계 PWM 제어(OFF 0%, LOW 70%, HIGH 90%) 및 Testbench 검증"
+          "개인 담당: DHT11 프로토콜 파싱, CDC 동기화, FSM Timeout, UART TX/RX 및 FND 통합",
+          "100MHz→1µs tick generator와 DHT11 20ms Start Low, ACK 80µs, 40-bit 수신 구현",
+          "Checksum 통과 시에만 data_valid를 1-clock pulse로 생성하여 UART 전송 트리거",
+          "6종 데이터를 원자적으로 snapshot → 117-byte ASCII → UART 9600bps 8N1 순차 전송"
         ],
-        roleNote: "Xilinx Vivado (Verilog HDL), Tektronix Oscilloscope, ComPortMaster로 교차 검증 수행",
-        architecture: ["DHT11 Single-Wire FSM", "DS1302 RTC (SPI)", "Rotary Encoder → Target Temp", "DC Motor PWM Controller", "Data Sender → UART TX Pipeline", "7-Segment FND Display"],
+        roleNote: "저장소 기준으로 DHT11·UART·FND·Button Debounce는 top.v에 통합되어 있으며, Motor/Rotary/RTC는 모듈 또는 preset 단계입니다. Timing report는 저장소에 없어 Slack 수치는 확정 성과에서 제외했습니다.",
+        architecture: [
+          "DHT11 — Open-Drain High-Z / 2-Stage Synchronizer / 7-State FSM / Checksum Gate",
+          "Data Sender — data_valid 시 6개 입력 필드 snapshot, tx_busy 중 변경 차단",
+          "UART TX/RX — 9600bps 8N1 TX + 16× Oversampling RX",
+          "117-byte Formatter — Time/Alarm/Target/Temperature/Humidity/Fan ASCII frame",
+          "FND — 4-mode MUX, 1ms digit scan, 4-digit full refresh 250Hz",
+          "Integration Boundary — Motor/Rotary/RTC는 현재 top hierarchy 미연결 또는 preset"
+        ],
         detailSections: [
           {
-            heading: "🔬 DHT11 프로토콜 분석 및 CRC 무결성 검증",
-            desc: "100MHz 클럭 기반 1us tick generator를 직접 설계하여, 딜레이 함수 없이 마이크로초 단위의 Handshaking 프로토콜을 구현. 오실로스코프로 캡처한 40bit 실제 파형의 이진수 값과 FPGA 내부 레지스터의 Checksum 연산 결과가 정확히 일치함을 확인하고, data_valid == 1'b1 일 때만 UART 전송을 트리거하여 쓰레기 값 전송을 차단했습니다.",
+            heading: "🔬 DHT11 Single-wire FSM과 데이터 무결성 Gate",
+            desc: "100MHz 클럭을 1µs tick으로 분주하고 7개 Main State와 2개 Read Substate로 Handshake·40-bit 수신·Checksum을 분리했습니다. 입력은 2개의 Flip-Flop을 통과시킨 뒤 Edge를 검출하며, Checksum이 일치할 때만 data_valid를 1클럭 동안 발생시킵니다.",
             bullets: [
-              "<strong>정밀 제어:</strong> Start Signal 18ms LOW → Release → ACK 80us LOW/80us HIGH 타이밍을 카운터로 직접 제어",
-              "<strong>데이터 판별:</strong> 비트 '0'(28us LOW) vs '1'(70us LOW) 구간을 카운터 비교로 판정",
-              "<strong>CRC 검증:</strong> 8bit Humidity_H + Humidity_L + Temp_H + Temp_L == Checksum byte"
+              "<strong>정밀 제어:</strong> 실제 RTL 기준 Start 20ms LOW → Release → ACK LOW/HIGH Edge 대기",
+              "<strong>비트 판별:</strong> HIGH pulse가 45µs보다 길면 1, 아니면 0으로 Shift",
+              "<strong>Fail-Safe:</strong> ACK/bit 대기 상태마다 100µs 또는 150µs Timeout 후 S_IDLE 복귀",
+              "<strong>Checksum:</strong> Humidity_H + Humidity_L + Temp_H + Temp_L == Checksum"
             ]
           },
           {
-            heading: "🌡️ 온도 편차 기반 동적 PWM 제어 (Testbench 검증)",
-            desc: "로터리 인코더로 설정한 목표 온도(target_temp) 대비 현재 온도(current_temp)의 차이에 따라 3단계 계통 제어를 적용. Vivado Testbench 시뮬레이션으로 온도 변화 엣지 시점에 1클럭 오차 없이 PWM Duty Cycle이 동적으로 변화하는 것을 검증 완료했습니다.",
+            heading: "📡 UART Commit Diff: 16-bit 오류에서 8N1·9600bps로",
+            desc: "이전 커밋은 8-bit 문자를 16-bit shift register에 적재하고 bit counter를 15까지 진행했으며, TX divider에 RX용 /16 oversampling이 적용되어 있었습니다. 현재 RTL은 8개 data bit만 전송하고 100MHz/9600 divider를 사용하도록 수정했습니다.",
             bullets: [
-              "<strong>OFF (0%):</strong> current ≤ target",
-              "<strong>LOW (70%):</strong> current > target && diff ≤ 3°C",
-              "<strong>HIGH (90%):</strong> diff > 3°C"
+              "<strong>Framing:</strong> Start + 16 Data + Stop → Start + 8 Data + Stop, 문자당 bit 수 18→10 (44.4% 감소)",
+              "<strong>Baud:</strong> 100MHz/9600/16 TX tick → 100MHz/9600 TX tick, 의도한 9600bps로 교정",
+              "<strong>Frame:</strong> 117 byte × 10 bit / 9600bps = 121.875ms wire-time",
+              "<strong>Duty:</strong> DHT11 3초 주기 대비 UART 선로 점유 약 4.06%"
             ]
           },
           {
-            heading: "📡 통합 데이터 UART 파이프라인 (117-byte 무결 전송)",
-            desc: "RTC 시간, 온습도, 타겟 온도, 팬 속도 등 6종의 이기종 데이터를 하나의 레지스터로 래치(Latch)한 뒤, ASCII 코드로 실시간 맵핑하여 9600 BPS 속도에 맞춰 117개의 문자를 순차 전송. PC 터미널(ComPortMaster)로 단 하나의 패킷 유실이나 문자 깨짐 없이 정상 출력됨을 확인했습니다."
+            heading: "🧾 6-Field Snapshot과 117-byte Serializer",
+            desc: "data_sender는 data_valid가 들어오고 TX가 idle일 때 Current Time, Alarm Time, Target Temp, Current Temp, Humidity, Fan Speed를 동시에 register에 저장합니다. 전송 중 입력이 바뀌어도 한 frame 내부 값이 섞이지 않으며, uart_tx가 index 0~116을 순회해 117개 문자를 출력합니다."
+          },
+          {
+            heading: "🔎 Repository Evidence와 남은 검증 Gap",
+            desc: "소스에는 DHT11 방어 로직과 UART 구조 개선이 확인되지만 Vivado timing summary, WNS/TNS, utilization report는 포함되어 있지 않습니다. 또한 온습도 /10 경로는 비교/뺄셈으로 바뀌었지만 time split과 FND bin2bcd에는 /, %가 남아 있어 '나눗셈 완전 제거'로 표현하지 않았습니다.",
+            bullets: [
+              "<strong>확인 완료:</strong> 2-Stage CDC, Open-Drain High-Z, 5 Timeout branches, 117-byte frame",
+              "<strong>부분 개선:</strong> 온도·습도 decimal path의 /10·%10 제거",
+              "<strong>남은 연산:</strong> UART time /100·%100, FND /10·/100·/1000 및 %10",
+              "<strong>추가 필요:</strong> report_timing_summary와 post-route WNS/TNS를 커밋해 수치 개선 검증"
+            ]
           }
+        ],
+        verification: [
+          { label: "DHT11 FSM", value: "7 Main States · 2 Read Substates · 40-bit Shift" },
+          { label: "Timeout", value: "5 recovery branches · 100µs/150µs → S_IDLE" },
+          { label: "UART Framing", value: "16→8 data bits · 8N1 · 9600bps" },
+          { label: "UART Frame", value: "117 bytes · 121.875ms · 3s 대비 4.06%" },
+          { label: "Data Snapshot", value: "6 fields latched atomically before TX" },
+          { label: "Evidence Gap", value: "Timing/Utilization report 없음 · Slack 미확정" }
         ],
         troubleshooting: [
           "[분석] 비동기 노이즈 및 타이밍 위반으로 인한 1-bit Shift 에러",
@@ -1760,16 +1787,19 @@ void gimbalExecuteCombinedControl(void) {
             ]
           },
           {
-            badge: "Setup Violation",
-            title: "나눗셈 연산자(/, %) → UART 데드락",
+            badge: "UART RTL",
+            title: "16-bit Framing + 16× Baud Tick → 문자 깨짐",
             symptom: "117-byte 통합 데이터 UART 전송 시, 특정 값이 깨지거나 송신 모듈이 완전히 뻗는 데드락 발생.",
             cause: [
-              "소프트웨어식 14비트 나눗셈(<code>temp / 10</code>)이 FPGA 내부에서 거대한 조합 논리 회로 생성",
-              "전기가 회로를 통과하는 데 클럭 주기(10ns)보다 긴 시간 소요 → 찌꺼기 값 래치 (Setup Time Violation)"
+              "이전 TX가 <code>r_bit_cnt &gt;= 15</code>까지 진행하여 문자당 16 data bit 송신",
+              "TX baud divider에 RX oversampling용 <code>/16</code>이 적용되어 목표보다 16배 빠른 tick 생성",
+              "온습도 decimal 변환 경로의 동적 /10·%10은 긴 조합 경로 후보"
             ],
             solution: [
-              "나눗셈 연산자를 코드에서 <strong>완전 제거</strong>",
-              "비교문(<code>&gt;=</code>)과 뺄셈 기반의 <strong>하드웨어 친화적 고속 BCD 디코더 로직</strong>으로 전면 교체 → 데이터 병목 제거, 117-byte 전송 신뢰성 100% 확보"
+              "TX FSM을 <strong>8 data bit + 1 Start + 1 Stop</strong>으로 교정",
+              "TX divider를 <code>100_000_000 / 9600</code>으로 분리하고 RX만 16× oversampling 유지",
+              "온도·습도 2자리 변환을 비교문(<code>&gt;=</code>)과 뺄셈 기반 BCD 경로로 교체",
+              "남아 있는 time/FND 나눗셈 경로는 timing report 확보 후 추가 최적화 대상으로 등록"
             ]
           },
           {
@@ -1784,8 +1814,11 @@ void gimbalExecuteCombinedControl(void) {
             ]
           }
         ],
-        capabilitySummary: "소프트웨어적 순차 처리가 아닌 FPGA의 <strong>병렬 모듈 아키텍처</strong>를 설계하고, 나눗셈 연산자 제거·BCD 디코더·2-Stage Synchronizer 등 <strong>하드웨어 레벨의 문제 해결 능력</strong>을 실증했습니다. 측정 장비(오실로스코프)와 Testbench를 통한 교차 검증으로 데이터 무결성을 증명할 수 있습니다.",
-        links: [["GitHub", "https://github.com/jmGim/Verilog_2026/tree/main/18.smart_air_conditioner"]]
+        capabilitySummary: "비동기 Sensor I/O를 CDC·High-Z·Timeout·Checksum으로 방어하고, Git commit diff에서 UART framing과 baud generator 오류를 추적했습니다. 특히 <strong>확인된 소스 근거와 아직 없는 timing report를 구분</strong>하여, 과장된 Slack 수치 대신 재현 가능한 정량 지표로 설계를 설명할 수 있습니다.",
+        links: [
+          ["Tech Blog 상세", "posts/fpga-dht11-uart-reliability.html"],
+          ["GitHub", "https://github.com/jmGim/Verilog_2026/tree/main/18.smart_air_conditioner"]
+        ]
       },
       airdrum: {
         title: "IoT Air Drum",
