@@ -950,8 +950,148 @@ float yaw_mag = atan2f(-my_comp, mx_comp) * RAD2DEG;` },
           ]},
           { type: "p", text: "측정 검증: 100kHz SCL에서 18-Byte 패킷(MPU6050) 전송 소요 시간 이론값 1.62ms와 오실로스코프 마커 실측값이 일치하는 도표를 포트폴리오에 첨부하면, 물리 계층 수준의 엔지니어링 역량을 증명할 수 있습니다." }
         ]
+      },
+      {
+        id: 15,
+        title: "ATmega328P 하이브리드 UART GPS 수신기: 라이브러리 탈피 Baremetal 설계 및 메모리 최적화",
+        excerpt: "외부 라이브러리(TinyGPS++)를 전혀 사용하지 않고 NMEA 원본을 직접 파싱하는 커스텀 펌웨어 설계. 단일 UART 버스 충돌을 Bit-banging으로 극복하고, TinyGPS++ 대비 RAM 17.3%p · Flash 24.6%p 절감을 실측 검증한 Baremetal 최적화 기록.",
+        category: "firmware",
+        level: "Advanced",
+        date: "2026. 09. 05",
+        readTime: "15 min",
+        tags: ["ATmega328P", "AVR-GCC", "NMEA", "Bit-banging", "GY-NEO6MV2", "Memory Optimization"],
+        sections: [
+          { type: "h3", text: "🎯 프로젝트 개요" },
+          { type: "p", text: "ATmega328P(Arduino UNO) 기반 GY-NEO6MV2 GPS 모듈 프로젝트. 외부 라이브러리 의존도를 탈피하고 AVR-GCC Baremetal C로 NMEA 데이터를 직접 파싱하여 2KB RAM/32KB Flash 자원을 극대화했습니다. u-blox 6 칩의 MS621FE 백업 배터리를 활용해 Hot Start(TTFF 1초 내)를 구현했습니다." },
+          { type: "img", src: "images/9.GPS_img.png", alt: "GY-NEO6MV2 u-blox 6 GPS 모듈" },
+
+          { type: "h3", text: "🔌 하이브리드 UART 아키텍처" },
+          { type: "p", text: "단일 HW UART 핀(0번)을 PC(CH340 USB-TTL)와 GPS가 공유하면 전압 오버드라이브로 GPS 신호가 묻히는 버스 충돌이 발생합니다. 이를 해결하기 위해 통신을 물리적으로 분리했습니다." },
+          { type: "ul", items: [
+            "GPS 수신 (RX): PB4 핀 — Bit-banging 소프트 시리얼 (9600bps, 104μs/bit, 중앙 샘플링)",
+            "PC 송신 (TX): PD1 핀 — HW UART, UDR0/UCSR0A 레지스터 직접 제어 (논블로킹 비동기)",
+            "GPS 모듈 RX 핀 NC 처리 — 시리얼 모니터 출력이 역류하는 칩 다운 현상 원천 차단"
+          ]},
+          { type: "code", lang: "C", title: "Bit-banging 9600bps 수신 핵심 로직", code: `// PB4: GPS 소프트 RX 초기화
+void uart_softRX_init(void) {
+    DDRB  &= ~(1 << PB4);   // 입력 모드
+    PORTB |=  (1 << PB4);   // Pull-up 활성화
+}
+
+uint8_t uart_softRX_byte(void) {
+    uint8_t data = 0;
+    while (PINB & (1 << PB4));   // Start Bit 하강 에지 대기
+    _delay_us(52);               // 반 주기 대기 → 첫 비트 중앙 위치
+    for (int i = 0; i < 8; i++) {
+        _delay_us(104);          // 1 bit = 104μs @ 9600bps
+        data >>= 1;
+        if (PINB & (1 << PB4)) data |= 0x80;
+    }
+    _delay_us(104);              // Stop Bit
+    return data;
+}
+
+// PD1: 하드웨어 UART 논블로킹 송신
+void uart_hw_putc(char c) {
+    while (!(UCSR0A & (1 << UDRE0)));  // TX 버퍼 빌 때까지 대기
+    UDR0 = c;
+}` },
+
+          { type: "h3", text: "⚙️ NMEA 커스텀 파서 및 좌표 변환 알고리즘" },
+          { type: "p", text: "표준 strtok()는 빈 필드(,,)를 건너뛰어 인덱스 오염이 발생합니다. 쉼표 카운팅 기반 커스텀 파서로 $GPGGA 문장에서 위도/경도/시간/Fix Quality를 안전하게 추출합니다." },
+          { type: "code", lang: "C", title: "쉼표 카운팅 NMEA 파서 + DDMM→DD 변환", code: `// $GPGGA 쉼표 인덱스 구조:
+// $GPGGA,시간(1),위도(2),N/S(3),경도(4),E/W(5),Fix(6),...
+void parse_gpgga(const char *nmea) {
+    int  comma_cnt = 0;
+    char field[16] = {0};
+    int  fi = 0;
+
+    for (int i = 0; nmea[i]; i++) {
+        if (nmea[i] == ',') {
+            field[fi] = '\0'; fi = 0;
+            comma_cnt++;
+            if (comma_cnt == 6 && field[0] == '0') {
+                uart_hw_print("[NO FIX]\r\n"); return;
+            }
+            // 위도(2), 경도(4) 필드 저장 처리 생략
+        } else {
+            field[fi++] = nmea[i];
+        }
+    }
+}
+
+// NMEA DDMM.MMMMM → 십진수 도(DD) 변환
+double nmea_to_dd(const char *s) {
+    double raw  = atof(s);           // e.g. 3732.53067
+    int    deg  = (int)(raw / 100); // 37
+    double mins = raw - deg * 100.0; // 32.53067
+    return deg + mins / 60.0;       // 37.5421778°
+}
+
+// 구글맵 URL 자동 생성
+void build_google_url(double lat, double lon) {
+    char buf[12];
+    uart_hw_print("https://maps.google.com/?q=");
+    dtostrf(lat, 9, 6, buf); uart_hw_print(buf);
+    uart_hw_putc(',');
+    dtostrf(lon, 10, 6, buf); uart_hw_print(buf);
+    uart_hw_print("\r\n");
+}` },
+
+          { type: "h3", text: "📐 좌표 변환 수식 검증" },
+          { type: "p", text: "NMEA DDMM.MMMMM 포맷 → 십진수 도(DD) 변환 공식: 위도 3732.53067 → 37 + 32.53067/60 = 37.5421778°, 경도 12650.47927 → 126 + 50.47927/60 = 126.8413211°. 이 값을 Google Maps에 입력하면 실제 측정 위치가 정확히 일치합니다." },
+          { type: "img", src: "images/9.GPS_coord_formula.png", alt: "NMEA DDMM.MMMMM → DD 좌표 변환 수식" },
+          { type: "img", src: "images/9.GPS_map_result.png", alt: "Google Maps 위치 결과 - 서울 37°32'30.6\"N 126°50'29.5\"E" },
+
+          { type: "h3", text: "📊 메모리 최적화 성과 (PlatformIO Build 실측)" },
+          { type: "p", text: "세 가지 구현 방식의 RAM/Flash 사용량을 PlatformIO로 직접 빌드하여 비교 검증했습니다." },
+          { type: "code", lang: "Text", title: "TinyGPS++ vs Baremetal 빌드 결과 비교", code: `【TinyGPS++ 라이브러리 방식】
+RAM:   [====          ] 32.1% (used 658 bytes from 2048 bytes)
+Flash: [======        ] 41.1% (used 13,272 bytes from 32,256 bytes)
+→ 객체 생성, 복잡한 클래스, 미사용 프로토콜 포함
+
+【Baremetal C — Float 미사용 (최경량)】
+RAM:   [=             ] 13.2% (used 270 bytes from 2048 bytes)
+Flash: [==            ]  3.7% (used 1,188 bytes from 32,256 bytes)
+→ 최소한의 C 배열과 UART 직접 제어
+
+【Baremetal C — 최종 완성본 (atof + dtostrf + URL)】
+RAM:   [=             ] 14.8% (used 304 bytes from 2048 bytes)
+Flash: [==            ] 16.5% (used 5,318 bytes from 32,256 bytes)
+→ 부동소수점 라이브러리 + URL 고정 문자열 추가
+
+=== 절감 성과 (TinyGPS++ 대비) ===
+RAM:   658 → 304 bytes  (-354 bytes, -17.3%p)
+Flash: 13,272 → 5,318 bytes (-7,954 bytes, -24.6%p)` },
+          { type: "img", src: "images/9.GPS_memory_compare.png", alt: "PlatformIO 빌드 메모리 비교 - TinyGPS++ vs Baremetal" },
+
+          { type: "h3", text: "🔴 트러블슈팅 1: 하드웨어 핀 충돌 및 모듈 다운" },
+          { type: "p", text: "문제: 초기 0번 핀(RX) 연결 시 PC와 연결된 CH340의 전압 오버드라이브로 GPS 신호가 묻히는 전기적 충돌 발생. GPS RX 핀에 선 연결 시 시리얼 모니터 출력이 역류하여 버퍼 에러 유발." },
+          { type: "ul", items: [
+            "원인: 단일 HW UART를 두 디바이스(PC + GPS)가 공유 → 전압 레벨 충돌",
+            "해결: 통신 핀을 PB4로 완전 분리 → CH340 간섭 원천 제거",
+            "해결: GPS 모듈의 RX 핀 NC 처리 → 단방향 Listen-only 구조로 가비지 역류 차단"
+          ]},
+
+          { type: "h3", text: "🔴 트러블슈팅 2: Multipath로 인한 Fix 불량 분석" },
+          { type: "p", text: "문제: 6층 창가에서 Fix LED 점등(위성 탐색 성공)에도 불구하고 [NO FIX] 파싱 에러 지속. Raw NMEA 우회 출력으로 코드 무결성을 확인했으나 Fix Quality 값이 0으로 수신됨." },
+          { type: "ul", items: [
+            "초기 가설: 소프트웨어 타이밍 병목 → Raw NMEA 우회 출력으로 배제",
+            "최종 원인: 도심 건물 전파 반사(Multipath) → SNR이 트래킹 임계값(-161dBm) 미달",
+            "해결: 9층 옥상(Line-of-Sight 확보) 환경 전환 → Hot Start 정상 동작, 오차 5m 이내 수신 성공"
+          ]},
+
+          { type: "h3", text: "💡 고찰 및 핵심 배움" },
+          { type: "ul", items: [
+            "임베디드 디버깅 3단계: 소프트웨어 타이밍 → 물리 계층 전압 충돌 → 환경적 RF 요인 순서로 가설 소거",
+            "지역 변수(Stack)와 고정 문자열(Data Segment)이 MCU 메모리 맵에 미치는 영향을 수치로 직접 추적",
+            "float 연산(atof, dtostrf) 추가 시 Flash 사용량이 1,188 → 5,318 bytes로 증가하는 Trade-off를 실측으로 체감",
+            "MS621FE 백업 배터리의 Almanac/Ephemeris 유지가 Cold Start 27초 → Hot Start 1초로 단축하는 효과 검증"
+          ]}
+        ]
       }
     ];
+
 
 
     const SERIES = [

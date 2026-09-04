@@ -1942,12 +1942,69 @@ void gimbalExecuteCombinedControl(void) {
           "[신뢰성] n.pt 기준선 미보유로 n FP16 7.132 FPS를 개선율 아닌 '차기 후보 성능'으로 분리 — 과장 없는 QA 태도"
         ],
         links: [["GitHub", "https://github.com/jmGim"]]
+      },
+      gps: {
+        title: "AVR 하이브리드 UART GPS 수신기",
+        subtitle: "라이브러리 탈피 NMEA 커스텀 파서 및 메모리 최적화",
+        image: "images/9.GPS_img.png",
+        brief: "ATmega328P Baremetal GPS / NMEA 파서 / 메모리 최적화",
+        num: 9,
+        tags: ["ATmega328P", "AVR-GCC", "NMEA", "Bit-banging", "GY-NEO6MV2", "PlatformIO"],
+        period: "2026.XX ~ 2026.XX",
+        target: "임베디드 SW 엔지니어 (저전력/자원 제한 도메인)",
+        hw: "Arduino UNO (ATmega328P), GY-NEO6MV2 (u-blox 6 GPS 모듈), MS621FE 백업 배터리",
+        summary: "외부 라이브러리(TinyGPS++)의 의존도를 탈피하고, NMEA 원본 데이터를 직접 파싱하는 커스텀 펌웨어를 구축하여 2KB RAM/32KB Flash의 ATmega328P 자원을 극대화한 프로젝트입니다. 단일 하드웨어 UART의 물리적 한계를 극복하기 위해 GPS 수신(Bit-banging, PB4)과 PC 송신(HW UART, PD1)을 물리적으로 분리하는 하이브리드 통신 아키텍처를 직접 설계했습니다.",
+        role: [
+          "하이브리드 UART 아키텍처 설계 — GPS 수신(Bit-banging PB4) / PC 송신(HW UART PD1) 물리 분리",
+          "$GPGGA 문장 쉼표 카운팅 기반 커스텀 NMEA 파서 직접 구현 (strtok 빈 필드 버그 우회)",
+          "NMEA 포맷(DDMM.MMMMM) → 십진수 도(DD) / DMS 변환 및 구글맵 URL 자동 생성 로직 구현",
+          "TinyGPS++ 대비 RAM 17.3%p, Flash 24.6%p 절감 (PlatformIO 빌드 기준 실측 검증)",
+          "멀티패스(Multipath) / 전압 충돌 / 핀 버스 충돌 등 물리 계층 트러블슈팅"
+        ],
+        architecture: [
+          "GPS RX — PB4 Bit-banging 소프트 시리얼 (9600bps, 104μs/bit, 중앙 샘플링)",
+          "NMEA Parser — $GPGGA 쉼표 카운팅 기반 경량 파서 (위도/경도/시간/Fix 추출)",
+          "Coordinate Converter — DDMM.MMMMM → DD(atof/60) / DMS(dtostrf) 변환",
+          "PC TX — HW UART PD1, UDR0/UCSR0A 레지스터 직접 제어 (논블로킹 고속 송신)"
+        ],
+        detailSections: [
+          {
+            heading: "🏗️ 2.1 하이브리드 UART 아키텍처",
+            desc: "단일 HW UART(0, 1번 핀)를 PC(USB-CH340)와 GPS가 공유할 경우 전기적 버스 충돌이 발생합니다. GPS 수신은 Bit-banging으로 PB4에, PC 송신은 HW UART PD1에 분리하여 물리적 간섭을 원천 차단했습니다.",
+            bullets: [
+              "<strong>GPS RX (PB4)</strong> — Start Bit 감지 → 반 주기(52μs) 대기 → 정중앙 샘플링으로 9600bps 비트 스트림 복원",
+              "<strong>PC TX (PD1)</strong> — UDR0 레지스터에 직접 쓰고 UCSR0A[UDRE0] 폴링으로 비동기 논블로킹 송신",
+              "<strong>GPS RX 핀 NC</strong> — GPS 모듈의 RX핀을 단방향 Listen-only로 연결 해제(NC)하여 가비지 역류 차단"
+            ],
+            code: `// Bit-banging 9600bps 수신 (PB4)\nvoid uart_softRX_init(void) {\n    DDRB  &= ~(1 << PB4);  // PB4 입력 설정\n    PORTB |=  (1 << PB4);  // 내부 Pull-up\n}\n\nuint8_t uart_softRX_byte(void) {\n    uint8_t data = 0;\n    // Start Bit 대기\n    while (PINB & (1 << PB4));\n    _delay_us(52);  // 반 주기 대기 → 첫 비트 중앙으로\n    for (int i = 0; i < 8; i++) {\n        _delay_us(104);  // 1 bit = 104μs @ 9600bps\n        data >>= 1;\n        if (PINB & (1 << PB4)) data |= 0x80;\n    }\n    _delay_us(104);  // Stop Bit\n    return data;\n}`
+          },
+          {
+            heading: "⚙️ 2.2 NMEA 커스텀 파서 및 좌표 변환",
+            desc: "표준 strtok()는 빈 필드(,,)를 건너뛰어 인덱스 오염이 발생합니다. 포인터와 쉼표 카운팅을 결합한 경량 파서를 직접 구현하고, NMEA 좌표를 구글맵 URL로 변환합니다.",
+            bullets: [
+              "<strong>쉼표 카운팅 파서</strong> — $GPGGA 식별 후 쉼표 인덱스로 위도(2), 경도(4), Fix(6), 시간(1) 필드 정밀 추출",
+              "<strong>좌표 변환</strong> — DDMM.MMMMM 포맷: DD = 정수부, MM.MMMMM / 60 → 37.5421778°",
+              "<strong>URL 생성</strong> — dtostrf()로 float→문자열 변환 후 https://maps.google.com/?q= 에 결합"
+            ],
+            code: `// NMEA DDMM.MMMMM → DD 십진수 변환\ndouble nmea_to_dd(const char *nmea_coord) {\n    double raw   = atof(nmea_coord);        // e.g. 3732.53067\n    int    deg   = (int)(raw / 100);        // 37\n    double mins  = raw - (deg * 100.0);     // 32.53067\n    return deg + mins / 60.0;              // 37.5421778°\n}\n\n// 구글맵 URL 자동 생성\nvoid build_google_url(double lat, double lon) {\n    char lat_s[12], lon_s[12];\n    dtostrf(lat, 9, 6, lat_s);\n    dtostrf(lon, 10, 6, lon_s);\n    uart_hw_print("https://maps.google.com/?q=");\n    uart_hw_print(lat_s); uart_hw_putc(','); uart_hw_print(lon_s);\n}`
+          }
+        ],
+        troubleshooting: [
+          "[해결] HW UART 0번 핀 충돌 → PB4 Bit-banging 분리로 CH340 전압 오버드라이브 및 버스 충돌 완전 차단",
+          "[분석] Fix LED 점등인데 [NO FIX] 지속 → Raw NMEA 우회 출력으로 코드 무결 확인 후 Multipath SNR 저하(-161dBm 임계값) 원인 판별",
+          "[해결] 9층 옥상(Line-of-Sight) 환경 전환 후 Hot Start(MS621FE 백업 배터리) 정상 작동, 오차 5m 이내 좌표 수신 성공",
+          "[최적화] TinyGPS++ 대비 RAM 17.3%p, Flash 24.6%p 절감 — Baremetal C 직접 제어의 자원 효율성 실측 검증"
+        ],
+        capabilitySummary: "2KB RAM · 32KB Flash라는 극한 자원 환경에서 외부 라이브러리 없이 <strong>직접 레지스터를 제어하는 Baremetal 펌웨어</strong>를 설계했습니다. 소프트웨어 타이밍, 전압 충돌, 멀티패스 등 다층적 가설을 단계적으로 소거하는 <strong>임베디드 엔지니어의 디버깅 방법론</strong>을 체화했습니다.",
+        links: [
+          ["GitHub", "https://github.com/jmGim/platformIO_AVR/tree/main/Uno_Register_Test/src"]
+        ]
       }
     };
 
     /* ===== Main / Sub 프로젝트 분리 ===== */
     const mainProjects = ['bmsota', 'gimbal', 'verilog'];
-    const subProjects  = ['yolo', 'parking', 'vending', 'airdrum', 'store', 'rhythm'];
+    const subProjects  = ['yolo', 'parking', 'vending', 'airdrum', 'store', 'rhythm', 'gps'];
     // 'cctv' — 비공개 처리
     const projectOrder = [...mainProjects, ...subProjects];
 
