@@ -781,8 +781,178 @@ end` },
             "Vivado timing report가 저장소에 없어 Slack 개선 수치는 미확정으로 관리"
           ]}
         ]
+      },
+      {
+        id: 14,
+        title: "MPU6050 & HMC5883L 데이터시트 핵심 분석 및 실무진 면접 공략 (Side-by-Side)",
+        excerpt: "방산·전장 시니어 엔지니어의 송곳 질문을 대비하는 MPU6050·HMC5883L 레지스터 심층 분석. SLEEP 모드 함정, SMPLRT_DIV 계산, I2C 버스 락업 복구(SCL 9-Clock Toggle), FreeRTOS NVIC 우선순위 설계까지 완전 정리.",
+        category: "firmware",
+        level: "Expert",
+        date: "2026. 09. 04",
+        readTime: "18 min",
+        tags: ["MPU6050", "HMC5883L", "I2C", "FreeRTOS", "NVIC", "Bus Recovery", "Interview"],
+        sections: [
+          { type: "h3", text: "🎯 개요: 왜 이 분석이 필요한가?" },
+          { type: "p", text: "방산 및 전장 업계의 시니어 엔지니어들은 신입 지원자가 단순히 오픈소스를 복사해 센서 값을 띄웠는지, 아니면 데이터시트의 하드웨어 특성을 완벽히 이해하고 예외 처리(Fail-Safe)를 반영했는지를 송곳 질문을 통해 검증합니다." },
+
+          { type: "h3", text: "⚙️ MPU6050 (1) — PWR_MGMT_1 / SLEEP 함정" },
+          { type: "p", text: "레지스터: PWR_MGMT_1 (0x6B) | Bit 7: DEVICE_RESET | Bit 6: SLEEP | 기본값: 0x40 (부팅 즉시 SLEEP 진입)" },
+          { type: "p", text: "❓ 면접 질문: \"보드가 켜진 후 MPU6050 초기화 시 데이터가 전혀 읽히지 않는다면 가장 먼저 무엇을 확인하겠는가?\"" },
+          { type: "p", text: "✅ 모범 답변: MPU6050은 부팅 시 기본적으로 SLEEP 모드(Bit 6 = 1)로 시작합니다. 가동 직후 PWR_MGMT_1 레지스터의 Bit 6을 0으로 클리어하여 클럭 소스를 설정하고 센서를 깨워야 합니다. 또한 센서 락업을 차단하기 위해 초기화 첫 단계에서 Bit 7(0x80)을 작성하여 하드웨어 소프트 리셋을 선행해야 합니다." },
+          { type: "code", lang: "C", title: "MPU6050 초기화 핵심 순서", code: `// 1. 소프트 리셋 (Bit7 = 1)
+HAL_I2C_Mem_Write(&hi2c1, MPU6050_ADDR<<1, 0x6B, 1, "\x80", 1, 50);
+HAL_Delay(100);  // 리셋 안정화 대기
+
+// 2. SLEEP 해제 + PLL with X Gyro 클럭 소스 설정
+uint8_t pwr = 0x01;  // Bit6=0(WAKE), Bit2:0=001(CLKSEL=PLL X)
+HAL_I2C_Mem_Write(&hi2c1, MPU6050_ADDR<<1, 0x6B, 1, &pwr, 1, 50);` },
+
+          { type: "h3", text: "⚙️ MPU6050 (2) — SMPLRT_DIV 계산" },
+          { type: "p", text: "레지스터: SMPLRT_DIV (0x19) | 공식: Sample Rate = Gyroscope Output Rate / (1 + SMPLRT_DIV)" },
+          { type: "p", text: "❓ 면접 질문: \"RTOS 환경에서 MPU6050의 샘플링 주기를 50Hz(20ms)로 제어하고 싶다. 관련 레지스터를 어떻게 계산하여 설정할 것인가?\"" },
+          { type: "p", text: "✅ 모범 답변: DLPF가 활성화된 상태에서 자이로 기본 출력 속도는 1kHz입니다. 50Hz = 1000 / (1 + SMPLRT_DIV) → SMPLRT_DIV = 19. 따라서 0x19 레지스터에 10진수 19(0x13)를 기입합니다." },
+          { type: "code", lang: "C", title: "SMPLRT_DIV 50Hz 설정", code: `// DLPF 활성화 (0x1A: CONFIG reg, DLPF_CFG=3 → Gyro BW 44Hz)
+uint8_t dlpf = 0x03;
+HAL_I2C_Mem_Write(&hi2c1, MPU6050_ADDR<<1, 0x1A, 1, &dlpf, 1, 50);
+
+// SMPLRT_DIV = 19 → Sample Rate = 1000/(1+19) = 50Hz
+uint8_t smplrt = 19;
+HAL_I2C_Mem_Write(&hi2c1, MPU6050_ADDR<<1, 0x19, 1, &smplrt, 1, 50);` },
+
+          { type: "h3", text: "⚙️ MPU6050 (3) — 인터럽트 Event-Driven 설계" },
+          { type: "p", text: "레지스터: INT_ENABLE (0x38) | Bit 0: DATA_RDY_EN | INT 핀에 High 펄스 출력" },
+          { type: "p", text: "❓ 면접 질문: \"인터럽트 방식(Event-Driven)으로 자이로를 읽을 때, CPU 점유율을 최소화하기 위한 FSM 설계와 핀 설정을 말해보라.\"" },
+          { type: "p", text: "✅ 모범 답변: INT_ENABLE의 DATA_RDY_EN을 활성화하여 ADC 연산 완료 시 INT 핀(GPIO EXTI)을 트리거합니다. EXTI ISR 내에서는 Binary Semaphore를 Release하기만 하고 즉시 복귀. 대기 중이던 전용 Task가 Deferred Interrupt Processing 아키텍처로 데이터를 취득합니다." },
+          { type: "code", lang: "C", title: "Deferred Interrupt Processing 패턴", code: `// EXTI ISR — 최소한의 작업만
+void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
+    if (GPIO_Pin == MPU_INT_Pin) {
+        BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+        xSemaphoreGiveFromISR(GyroReadySemHandle, &xHigherPriorityTaskWoken);
+        portYIELD_FROM_ISR(xHigherPriorityTaskWoken);  // 즉시 Task 깨우기
+    }
+}
+
+// gyroSystemTask — 세마포어 대기 후 데이터 취득
+void gyroSystemTask(void *arg) {
+    for (;;) {
+        if (osSemaphoreAcquire(GyroReadySemHandle, osWaitForever) == osOK) {
+            const float dt = elapsed_ms / 1000.0f;
+            if (!imu_update_math(dt)) {
+                set_imu_fault();
+                osDelay(100);
+            }
+        }
+    }
+}` },
+
+          { type: "h3", text: "🧲 HMC5883L (1) — Single-Measurement 함정" },
+          { type: "p", text: "레지스터: Mode Register (0x02) | Bits 1-0: MD | 기본값: 0x01 (Single-Measurement 모드)" },
+          { type: "p", text: "❓ 면접 질문: \"HMC5883L을 가동하고 최초 1회만 데이터가 읽히고 이후 갱신되지 않는 현상이 발생한다면 원인이 무엇인가?\"" },
+          { type: "p", text: "✅ 모범 답변: HMC5883L의 디폴트 모드는 Single-Measurement이므로 데이터 1회 출력 후 절전 상태로 돌아갑니다. 초기화 시 Mode Register에 0x00을 써서 Continuous-Measurement 모드로 전환해야 주기적 갱신이 일어납니다." },
+          { type: "code", lang: "C", title: "HMC5883L Continuous 모드 초기화", code: `// Configuration Register A (0x00): DO = 75Hz (0b110 = 0x18)
+uint8_t cfgA = 0x18;
+HAL_I2C_Mem_Write(&hi2c1, HMC_ADDR<<1, 0x00, 1, &cfgA, 1, 50);
+
+// Mode Register (0x02): 0x00 = Continuous-Measurement
+uint8_t mode = 0x00;
+HAL_I2C_Mem_Write(&hi2c1, HMC_ADDR<<1, 0x02, 1, &mode, 1, 50);
+HAL_Delay(10);  // 첫 측정 완료 대기` },
+
+          { type: "h3", text: "🧲 HMC5883L (2) — Stale Data 문제와 ODR 설계" },
+          { type: "p", text: "레지스터: Config Register A (0x00) | Bits 4-2: DO (Data Output Rate) | 최대 75Hz" },
+          { type: "p", text: "❓ 면접 질문: \"HMC5883L의 최대 ODR을 고려할 때, RTOS 제어 주기를 10ms(100Hz)로 설정하면 어떤 성능 낭비가 발생하는가?\"" },
+          { type: "p", text: "✅ 모범 답변: 지자계의 물리적 최대 속도는 75Hz(13.3ms 주기)입니다. 10ms 루프에서는 최소 1~2회 이상 레지스터 값이 변하지 않은 Stale Data를 읽어와 불필요한 I2C 대역폭 낭비와 연산 손실이 발생합니다. 지자계 태스크는 20ms 이상의 주기로 스케줄링하는 것이 효율적입니다." },
+
+          { type: "h3", text: "🧲 HMC5883L (3) — Hard/Soft Iron 보상 및 Tilt Compensation" },
+          { type: "p", text: "❓ 면접 질문: \"지자계 센서가 장착된 보드를 기울일 때 발생하는 방위각 오차를 하드웨어/소프트웨어적으로 어떻게 보상하는가?\"" },
+          { type: "p", text: "✅ 모범 답변: 금속 프레임이나 모터 주변에 배치 시 영구 오프셋이 생기는 Hard Iron 왜곡이 발생하므로 360도 회전 수집으로 구형 오프셋을 보정합니다. 또한 센서 기울임 시 X, Y축 벡터가 찌그러지므로, MPU6050 상보필터로 도출한 Roll/Pitch를 활용하여 3D 좌표계를 수평면으로 투영하는 Tilt Compensation을 적용합니다." },
+          { type: "code", lang: "C", title: "Tilt Compensation Yaw 계산", code: `// Hard-Iron 캘리브레이션 오프셋 적용
+float mx = raw_mx - HARD_IRON_X;  // X offset = -14
+float my = raw_my - HARD_IRON_Y;  // Y offset = -36
+float mz = raw_mz;
+
+// MPU6050 상보필터에서 획득한 Roll/Pitch (도 → 라디안)
+float r = roll  * DEG2RAD;
+float p = pitch * DEG2RAD;
+
+// Tilt Compensation: 수평면 투영
+float mx_comp = mx*cosf(p) + mz*sinf(p);
+float my_comp = mx*sinf(r)*sinf(p) + my*cosf(r) - mz*sinf(r)*cosf(p);
+
+// Yaw 방위각 산출
+float yaw_mag = atan2f(-my_comp, mx_comp) * RAD2DEG;` },
+
+          { type: "h3", text: "🔴 I2C 버스 락업(Lock-up) 원인 분석" },
+          { type: "p", text: "현업에서 가장 가혹하게 검증하는 트러블슈팅 주제: MCU가 슬레이브 센서로부터 데이터를 읽는 도중(SDA Low 구동 상태) 강제 리셋되거나 전기적 노이즈가 유입되면, 슬레이브 센서는 자신이 8비트 데이터를 다 송신하지 못했다고 판단하여 SDA 라인을 영원히 Low로 붙잡고 대기(SDA Hold)합니다. MCU가 재기동해도 SDA가 Low이므로 START 조건 자체가 불가능해집니다." },
+
+          { type: "h3", text: "🔧 I2C 버스 복구: SCL 9-Clock GPIO Toggling" },
+          { type: "p", text: "SCL에 9번의 클럭 펄스를 GPIO 수동 제어로 강제 주입합니다. 이 9개의 펄스가 슬레이브의 8-bit 시프트 레지스터 상태 머신을 끝까지 강제 구동시켜 ACK 단계로 진입시키고, 슬레이브는 SDA 라인 제어권을 놓고 High-Z 상태(SDA Release)로 복귀합니다." },
+          { type: "code", lang: "C", title: "MyI2C_BusRecovery() — 시스템 기동 시 I2C 버스 복구 루틴", code: `void MyI2C_BusRecovery(void) {
+    // 1. PB6(SCL), PB7(SDA) → GPIO Output Open-Drain으로 전환
+    GPIO_InitTypeDef GPIO_InitStruct = {0};
+    __HAL_RCC_GPIOB_CLK_ENABLE();
+    GPIO_InitStruct.Pin   = GPIO_PIN_6 | GPIO_PIN_7;
+    GPIO_InitStruct.Mode  = GPIO_MODE_OUTPUT_OD;  // Open-Drain 필수
+    GPIO_InitStruct.Pull  = GPIO_PULLUP;
+    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
+    HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+
+    // SDA Stuck-Low 확인
+    if (HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_7) == GPIO_PIN_RESET) {
+        // 2. SCL 9-Clock 수동 토글 → 슬레이브 상태 머신 강제 종료
+        for (int i = 0; i < 9; i++) {
+            HAL_GPIO_WritePin(GPIOB, GPIO_PIN_6, GPIO_PIN_RESET);
+            HAL_Delay(10);  // ~50kHz 모사
+            HAL_GPIO_WritePin(GPIOB, GPIO_PIN_6, GPIO_PIN_SET);
+            HAL_Delay(10);
+            // SDA가 해방(High)되면 즉시 탈출
+            if (HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_7) == GPIO_PIN_SET) break;
+        }
+    }
+
+    // 3. 수동 STOP 조건: SCL High 상태에서 SDA Low→High 전이
+    HAL_GPIO_WritePin(GPIOB, GPIO_PIN_7, GPIO_PIN_RESET);
+    HAL_Delay(10);
+    HAL_GPIO_WritePin(GPIOB, GPIO_PIN_6, GPIO_PIN_SET);
+    HAL_Delay(10);
+    HAL_GPIO_WritePin(GPIOB, GPIO_PIN_7, GPIO_PIN_SET);  // STOP 성립
+    HAL_Delay(10);
+
+    // 4. 핀 복원: I2C1 Alternate Function (AF4 Open-Drain)
+    GPIO_InitStruct.Mode      = GPIO_MODE_AF_OD;
+    GPIO_InitStruct.Alternate = GPIO_AF4_I2C1;
+    HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+}` },
+
+          { type: "h3", text: "🔥 FreeRTOS NVIC 우선순위 설계: EXTI4 마스킹 경계" },
+          { type: "p", text: "MPU6050의 INT 핀을 PA4(EXTI4)에 연결했을 때, EXTI4의 Preemption Priority를 반드시 5 이상으로 지정해야 하는 이유가 있습니다. FreeRTOS 커널은 configMAX_SYSCALL_INTERRUPT_PRIORITY(STM32 기본: 5) 이하의 인터럽트만 관리 범위에 둡니다." },
+          { type: "code", lang: "Text", title: "FreeRTOS NVIC Priority Map", code: `우선순위 0 (최고)
+├── [0 ~ 4]: Kernel Unmasked Zone
+│            → RTOS API 사용 불가 영역
+│            → 지터 없는 하드웨어 초정밀 연산 전용
+│
+├── ────── configMAX_SYSCALL_INTERRUPT_PRIORITY = 5 ──────
+│
+├── [5 ~ 15]: Kernel Managed Zone
+│            → EXTI4 (MPU6050 INT) → Priority = 5 설정
+│            → FromISR 계열 API 안전 호출 가능
+│            → osSemaphoreRelease() / xSemaphoreGiveFromISR()
+│
+우선순위 15 (최저)` },
+          { type: "p", text: "⚠️ Hard Fault 원인: EXTI4 Priority를 0~4로 설정하면, ISR 내에서 osSemaphoreRelease() 또는 FromISR 계열 동기화 API 호출 시 커널 레지스터 구조 파괴(Assert)가 발생하여 즉시 Hard Fault로 시스템이 뻗습니다. CubeMX에서 EXTI4 NVIC Priority를 정확히 5로 설정하는 것이 핵심입니다." },
+
+          { type: "h3", text: "📊 포트폴리오 면접 시나리오 구성 — 4페이지 전략" },
+          { type: "ul", items: [
+            "PAGE 1. [문제 정의] I2C 100kHz Standard Mode 전송 병목 및 태스크 지연 상황 정량 분석 (18-Byte → 1.62ms 계산)",
+            "PAGE 2. [물리 신호 검증] 로직 분석기를 이용한 1 Byte 전송 프레임(Start~Ack) 90μs 정밀 확인",
+            "PAGE 3. [동작 설계] EXTI4 인터럽트(Active-High) 핀의 Pull-Down 보정 전후 신호 노이즈 극복기",
+            "PAGE 4. [복구 시각화] SCL 9-Clock 강제 Toggling 적용 시 SDA Stuck-Low 리셋 전후 파형 비교"
+          ]},
+          { type: "p", text: "측정 검증: 100kHz SCL에서 18-Byte 패킷(MPU6050) 전송 소요 시간 이론값 1.62ms와 오실로스코프 마커 실측값이 일치하는 도표를 포트폴리오에 첨부하면, 물리 계층 수준의 엔지니어링 역량을 증명할 수 있습니다." }
+        ]
       }
     ];
+
 
     const SERIES = [
       { title: "STM32 OTA 시스템 구축 A to Z", title_en: "Building STM32 OTA System A to Z", desc: "부트로더 설계 → ESP8266 다운로드 → Flash 파티셔닝 → CRC32 검증 전 과정", desc_en: "Bootloader design → ESP8266 download → Flash partitioning → CRC32 validation", posts: 5, completed: 3, tags: ["STM32", "OTA", "Bootloader"] },
