@@ -1999,12 +1999,112 @@ void gimbalExecuteCombinedControl(void) {
         links: [
           ["GitHub", "https://github.com/jmGim/platformIO_AVR/tree/main/Uno_Register_Test/src"]
         ]
+      },
+      awsslack: {
+        title: "AWS Slack Notification 시스템",
+        subtitle: "EventBridge → SNS → Lambda 실시간 보안 이벤트 알림 + IaC 자동화",
+        image: "images/10. BMS_OTA_Integration_Management.png",
+        brief: "AWS CloudTrail 이벤트 → Slack 실시간 알림 / Terraform IaC / GitLab CI/CD",
+        num: 10,
+        tags: ["AWS", "Lambda", "EventBridge", "SNS", "Terraform", "GitLab CI/CD", "Node.js"],
+        period: "2023.04 ~ 2023.06",
+        target: "DevOps / Cloud 엔지니어 (AWS 인프라 모니터링 도메인)",
+        hw: "AWS (EventBridge, SNS, Lambda Node.js 22.x), Terraform 1.5+, GitLab CI",
+        summary: "AWS 콘솔 및 리소스에서 발생하는 주요 보안·운영 이벤트(IAM, EC2, Console Login 등)를 실시간으로 감지하여 Slack 채널로 알림을 전송하는 경량 모니터링 시스템입니다. Terraform으로 인프라를 모듈화하고 GitLab CI/CD로 배포를 자동화하여 재사용성과 운영 효율성을 확보했습니다. SNS와 Lambda를 공통 구조로 활용하여 비용을 약 12% 절감했습니다.",
+        role: [
+          "EventBridge Rule 설계 — IAM, EC2, Sign-in 이벤트 패턴 필터링 (불필요 알림 최소화)",
+          "Lambda(Node.js 22.x) 알림 로직 구현 — 이벤트 파싱, 색상 규칙 분기, Slack Block Kit 메시지 구성",
+          "Terraform 3-모듈(eventbridge/sns/lambda) IaC 설계 및 dev/prod 환경 분리",
+          "GitLab CI/CD 파이프라인 4단계(validate→plan→deploy→cleanup) 구성 및 secret 관리",
+          "SNS 공통화로 중복 리소스 제거 → 비용 약 12% 절감 달성"
+        ],
+        architecture: [
+          "CloudTrail API 호출 → EventBridge (이벤트 패턴 필터링)",
+          "EventBridge → SNS Topic (팬아웃) → Lambda 트리거",
+          "Lambda(Node.js) — 이벤트 파싱 + 색상 분기 + Slack Webhook POST",
+          "Terraform modules: eventbridge / sns / lambda (env별 독립 state)"
+        ],
+        detailSections: [
+          {
+            heading: "🏗️ 3.1 EventBridge 이벤트 감지 및 필터링",
+            desc: "CloudTrail에서 발생하는 수백 가지 이벤트 중 보안·운영상 의미 있는 이벤트만 선별하여 SNS로 전달합니다. 불필요한 Lambda 실행을 사전에 차단하여 비용과 노이즈를 최소화했습니다.",
+            bullets: [
+              "<strong>IAM</strong>: AttachUserPolicy, CreateUser, DeleteUser, CreateAccessKey, ChangePassword, Detach*Policy",
+              "<strong>EC2</strong>: RunInstances, StartInstances, StopInstances, TerminateInstances, Security Group 인바운드/아웃바운드 규칙 변경",
+              "<strong>Sign-in</strong>: ConsoleLogin (Root 및 IAM 사용자 콘솔 접속 감지)"
+            ],
+            code: `// EventBridge Rule 이벤트 패턴 예시 (Terraform HCL)
+event_pattern = jsonencode({
+  source      = ["aws.iam", "aws.ec2", "aws.signin"]
+  detail-type = ["AWS API Call via CloudTrail", "AWS Console Sign In via CloudTrail"]
+  detail = {
+    eventName = [
+      { prefix = "Attach" }, { prefix = "Detach" },
+      "CreateUser", "DeleteUser", "CreateAccessKey",
+      "RunInstances", "StopInstances", "TerminateInstances",
+      "ConsoleLogin"
+    ]
+  }
+})`
+          },
+          {
+            heading: "⚙️ 3.2 Lambda 알림 로직 — 색상 우선순위 분기",
+            desc: "Lambda 함수(app.js)는 SNS 이벤트에서 CloudTrail detail을 추출하고, 이벤트 유형에 따라 Slack 메시지의 색상과 형태를 결정합니다. Root 계정 활동을 최우선으로 탐지합니다.",
+            bullets: [
+              "<strong>Root 사용자</strong> → Black (#000000): 최고 권한 계정 활동 최우선 감지",
+              "<strong>IAM Delete/Detach/Revoke</strong> → Red (#ff000f): 위험 권한 변경",
+              "<strong>IAM Create/Attach</strong> → Green (#00ff0f): 일반 권한 변경",
+              "<strong>ConsoleLogin</strong> → Blue (#0000ff): 로그인 이벤트",
+              "<strong>EC2 Stop/Terminate</strong> → Red: 위험 상태 변경 | <strong>그 외</strong> → Magenta"
+            ],
+            code: `// Lambda app.js — 색상 분기 및 Slack 메시지 구성 (Node.js)
+exports.handler = async (event) => {
+  const snsMsg  = JSON.parse(event.Records[0].Sns.Message);
+  const detail  = snsMsg.detail;
+  const evtName = detail.eventName;
+  const user    = detail.userIdentity;
+
+  // 색상 우선순위 결정
+  let color = '#ff00ff'; // default: magenta
+  if (user.type === 'Root')                        color = '#000000';
+  else if (/Delete|Detach|Revoke/.test(evtName))  color = '#ff000f';
+  else if (/Create|Attach/.test(evtName))         color = '#00ff0f';
+  else if (evtName === 'ConsoleLogin')             color = '#0000ff';
+  else if (/Stop|Terminate/.test(evtName))        color = '#ff000f';
+
+  const payload = {
+    attachments: [{
+      color,
+      fallback: evtName,
+      fields: [
+        { title: 'Event',  value: evtName,              short: true },
+        { title: 'User',   value: user.userName || user.type, short: true },
+        { title: 'Region', value: snsMsg.region,        short: true },
+        { title: 'Source IP', value: detail.sourceIPAddress, short: true }
+      ],
+      actions: [{ type:'button', text:'CloudTrail 보기', url: cloudTrailUrl(detail) }]
+    }]
+  };
+  await postToSlack(payload);
+};`
+          }
+        ],
+        troubleshooting: [
+          "[설계] 이벤트별 개별 Lambda 대신 SNS 공통 구독 구조 채택 → Lambda 함수 수 절감 및 비용 약 12% 감소",
+          "[보안] Webhook URL/AWS 자격증명을 GitLab CI Variables(masked/protected)로만 관리 — 코드 노출 원천 차단",
+          "[운영] resource_group으로 동시 apply 충돌 방지, 환경별 독립 state로 dev/prod 격리",
+          "[자동화] rules: changes 조건으로 변경된 환경의 job만 실행 → 불필요한 plan/apply 방지"
+        ],
+        capabilitySummary: "AWS 보안 이벤트 모니터링부터 IaC 모듈화, CI/CD 파이프라인 자동화까지 <strong>전체 DevOps 사이클을 단독으로 설계·구현</strong>했습니다. EventBridge → SNS → Lambda의 서버리스 아키텍처를 활용해 <strong>비용 효율적이고 운영 안정적인 실시간 알림 시스템</strong>을 구축할 수 있습니다.",
+        links: [
+          ["GitLab", "https://gitlab.com/whdals5049/slack_notification_for_aws"]
+        ]
       }
     };
 
     /* ===== Main / Sub 프로젝트 분리 ===== */
     const mainProjects = ['bmsota', 'gimbal', 'verilog'];
-    const subProjects  = ['yolo', 'parking', 'vending', 'airdrum', 'store', 'rhythm', 'gps'];
+    const subProjects  = ['yolo', 'parking', 'vending', 'airdrum', 'store', 'rhythm', 'gps', 'awsslack'];
     // 'cctv' — 비공개 처리
     const projectOrder = [...mainProjects, ...subProjects];
 
