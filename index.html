@@ -494,12 +494,19 @@
     .project-grid--main {
       grid-template-columns: repeat(2, 1fr);
     }
-    .project-grid--main .project-card-img { height: 240px }
-    .project-card--main {
-      border: 2px solid rgba(14,165,233,.25);
-      box-shadow: 0 2px 16px rgba(14,165,233,.06);
+
+    .project-grid--main .project-card-img {
+      height: 240px
     }
-    .project-card--main:hover { border-color: var(--cyan) }
+
+    .project-card--main {
+      border: 2px solid rgba(14, 165, 233, .25);
+      box-shadow: 0 2px 16px rgba(14, 165, 233, .06);
+    }
+
+    .project-card--main:hover {
+      border-color: var(--cyan)
+    }
 
     /* Sub Projects — 3열, 작은 카드 */
     .project-grid--sub {
@@ -1076,8 +1083,13 @@
         grid-template-columns: repeat(2, 1fr)
       }
 
-      .project-grid--main { grid-template-columns: 1fr }
-      .project-grid--sub  { grid-template-columns: repeat(2, 1fr) }
+      .project-grid--main {
+        grid-template-columns: 1fr
+      }
+
+      .project-grid--sub {
+        grid-template-columns: repeat(2, 1fr)
+      }
 
       .contact-wrap {
         grid-template-columns: 1fr
@@ -1101,7 +1113,9 @@
         grid-template-columns: repeat(2, 1fr)
       }
 
-      .project-grid--sub { grid-template-columns: 1fr }
+      .project-grid--sub {
+        grid-template-columns: 1fr
+      }
 
       .sidebar-toc {
         right: 12px;
@@ -1177,7 +1191,7 @@
     <div class="hero" id="hero-inner">
       <div class="hero-copy">
         <p class="eyebrow">C/C++ · STM32 · FreeRTOS · OTA · Sensor Fusion · Verilog</p>
-        <h1>오실로스코프로 검증하고<br>RTOS 위에서 제어하는<br><span>임베디드 SW 엔지니어</span></h1>
+        <h1>HW/SW 검증하고<br>RTOS 위에서 제어하는<br><span>임베디드 SW 엔지니어</span></h1>
         <p class="lead">
           I2C 타이밍 충돌을 Mutex로 잡고, Flash 파티셔닝으로 OTA 신뢰성을 확보합니다.
           센서 데이터를 수식으로 검증하고, RTOS Task 우선순위를 끝까지 튜닝하여
@@ -1195,16 +1209,18 @@ Data-driven Embedded SW Engineer
 → 직감이 아닌 데이터시트와 오실로스코프로 검증하는 개발자
 
 <span class="t-muted">$</span> focus --areas
-- MCU Firmware (STM32, ESP32) / FreeRTOS / OSEK
-- Sensor Fusion / CAN / Timing Analysis
-- Edge to Cloud (Node-RED, MQTT, AWS)
-- Verilog H/W Logic / OTA Bootloader
+- MCU Firmware (STM32, AVR) / FreeRTOS 
+- I2C / UART / CAN / Timing Analysis
+- QA/QC / GitLab CI / JIRA / 
 
-<span class="t-muted">$</span> value
-"데이터로 분석하고, 수식으로 검증한다."
+<span class="t-muted">$</span> experience --areas
+- Edge Cloud (Raspberry pi 4 / Jetson Nano / ESP32 / Node-RED / MQTT / AWS)
+- Verilog H/W Logic 
+- OTA Bootloader on STM32 
+
 
 <span class="t-muted">$</span> principle --reliability
-- 매 커밋마다 빌드 검증, CRC32 무결성 체크
+- Static / Host / HIL / Integration 검증 Pipeline
 - RTOS 환경에서 Mutex/Semaphore 기반 경합 방지
 - Flash 파티셔닝 + 이중 검증으로 OTA 신뢰성 확보
 - 코드 리뷰 · 정적 분석으로 <span style="color:#34d399">소프트웨어 신뢰성</span> 보장</code></pre>
@@ -1233,15 +1249,20 @@ Data-driven Embedded SW Engineer
 
       <!-- Main Projects -->
       <div class="project-sub-heading reveal" style="max-width:1400px;margin:0 auto;padding:0 clamp(18px,5vw,72px)">
-        <h3 style="font-size:16px;font-weight:800;color:var(--text);display:flex;align-items:center;gap:8px;margin-bottom:16px">⭐ Main Projects</h3>
+        <h3
+          style="font-size:16px;font-weight:800;color:var(--text);display:flex;align-items:center;gap:8px;margin-bottom:16px">
+          ⭐ Main Projects</h3>
       </div>
       <div class="project-grid project-grid--main" id="project-grid-main">
         <!-- JS가 생성 -->
       </div>
 
       <!-- Sub Projects -->
-      <div class="project-sub-heading reveal" style="max-width:1400px;margin:32px auto 0;padding:0 clamp(18px,5vw,72px)">
-        <h3 style="font-size:14px;font-weight:700;color:var(--muted);display:flex;align-items:center;gap:6px;margin-bottom:12px">📂 Sub Projects</h3>
+      <div class="project-sub-heading reveal"
+        style="max-width:1400px;margin:32px auto 0;padding:0 clamp(18px,5vw,72px)">
+        <h3
+          style="font-size:14px;font-weight:700;color:var(--muted);display:flex;align-items:center;gap:6px;margin-bottom:12px">
+          📂 Sub Projects</h3>
       </div>
       <div class="project-grid project-grid--sub" id="project-grid-sub">
         <!-- JS가 생성 -->
@@ -1270,7 +1291,8 @@ Data-driven Embedded SW Engineer
             <span class="sk">Verilog HDL</span>
             <span class="sk">Linux Shell</span>
           </div>
-          <p class="sk-desc">STM32 펌웨어 전체를 C로 구현 (HAL + Bare-metal). Verilog로 DHT11 40-bit 타이밍 파싱 및 PWM 제어 로직 설계. Python으로 YOLOv8 학습·추론 및 시리얼 데이터 시각화.</p>
+          <p class="sk-desc">STM32 펌웨어 전체를 C로 구현 (HAL + Bare-metal). Verilog로 DHT11 40-bit 타이밍 파싱 및 PWM 제어 로직 설계.
+            Python으로 YOLOv8 학습·추론 및 시리얼 데이터 시각화.</p>
         </article>
 
         <!-- Dev Tools -->
@@ -1283,7 +1305,8 @@ Data-driven Embedded SW Engineer
             <span class="sk">Makefile</span>
             <span class="sk">vi / Vim</span>
           </div>
-          <p class="sk-desc">CubeIDE로 NVIC 우선순위, 클럭 트리, 핀맵 설정. Organization 기반 Git 브랜치 관리 (feature/imu, hotfix/ota). Makefile 빌드 자동화 경험.</p>
+          <p class="sk-desc">CubeIDE로 NVIC 우선순위, 클럭 트리, 핀맵 설정. Organization 기반 Git 브랜치 관리 (feature/imu, hotfix/ota).
+            Makefile 빌드 자동화 경험.</p>
         </article>
 
         <!-- Protocol -->
@@ -1297,7 +1320,8 @@ Data-driven Embedded SW Engineer
             <span class="sk">MQTT</span>
             <span class="sk">AT Command</span>
           </div>
-          <p class="sk-desc">I2C1 버스에 MPU6050+HMC5883L 2디바이스 동시 운용, Mutex 기반 버스 중재. UART DMA 송수신으로 CLI/모니터 구현. ESP8266 AT 명령 기반 Wi-Fi OTA 다운로드. CAN 프로토콜 학습 완료.</p>
+          <p class="sk-desc">I2C1 버스에 MPU6050+HMC5883L 2디바이스 동시 운용, Mutex 기반 버스 중재. UART DMA 송수신으로 CLI/모니터 구현. ESP8266
+            AT 명령 기반 Wi-Fi OTA 다운로드. CAN 프로토콜 학습 완료.</p>
         </article>
 
         <!-- Framework -->
@@ -1310,7 +1334,8 @@ Data-driven Embedded SW Engineer
             <span class="sk">Linux Kernel</span>
             <span class="sk">Qt6</span>
           </div>
-          <p class="sk-desc">FreeRTOS 6-Task 아키텍처 설계. Semaphore로 ISR-Task 동기화, Mutex로 I2C 공유 자원 보호, 우선순위 역전 분석. Linux 디바이스 드라이버(chardev) 구현 학습.</p>
+          <p class="sk-desc">FreeRTOS 6-Task 아키텍처 설계. Semaphore로 ISR-Task 동기화, Mutex로 I2C 공유 자원 보호, 우선순위 역전 분석. Linux
+            디바이스 드라이버(chardev) 구현 학습.</p>
         </article>
 
         <!-- Board & MCU -->
@@ -1324,7 +1349,8 @@ Data-driven Embedded SW Engineer
             <span class="sk">AVR (Arduino Uno)</span>
             <span class="sk">FPGA (Basys3)</span>
           </div>
-          <p class="sk-desc">STM32에서 HAL + FreeRTOS 기반 짐벌·OTA 구현. Jetson Nano에서 YOLOv8 TensorRT FP16 추론 최적화. RPi C 소켓 서버·크로스 컴파일 구축.</p>
+          <p class="sk-desc">STM32에서 HAL + FreeRTOS 기반 짐벌·OTA 구현. Jetson Nano에서 YOLOv8 TensorRT FP16 추론 최적화. RPi C 소켓
+            서버·크로스 컴파일 구축.</p>
         </article>
 
         <!-- Edge / Cloud / AI -->
@@ -1338,7 +1364,8 @@ Data-driven Embedded SW Engineer
             <span class="sk">OpenCV / YOLOv8</span>
             <span class="sk">TensorRT</span>
           </div>
-          <p class="sk-desc">MQTT → AWS/IBM Gateway로 센서 데이터 파이프라인 구축. YOLOv8n/s 학습 후 Jetson에서 TensorRT FP16 변환, 벤치마크(FPS +24.9%, p95 −18.6%). Grafana 대시보드 실시간 모니터링.</p>
+          <p class="sk-desc">MQTT → AWS/IBM Gateway로 센서 데이터 파이프라인 구축. YOLOv8n/s 학습 후 Jetson에서 TensorRT FP16 변환, 벤치마크(FPS
+            +24.9%, p95 −18.6%). Grafana 대시보드 실시간 모니터링.</p>
         </article>
 
         <!-- Awards -->
@@ -1503,8 +1530,10 @@ Data-driven Embedded SW Engineer
         brief: "FreeRTOS 6-Task / Event-Driven IMU / Sensor Fusion / Fail-Safe",
         num: 1,
         tags: ["STM32F411", "FreeRTOS", "I2C", "EXTI", "Sensor Fusion", "PWM", "Fail-Safe"],
-        period: "202X.XX ~ 202X.XX",
+        period: "2026.04 ~ 2026.08",
+
         target: "임베디드 SW 엔지니어 (차량 전장 및 방산 도메인)",
+
         hw: "STM32F411, MPU6050(6축 IMU), HMC5883L(3축 지자기), SG90 Servo ×3",
         summary: "MPU6050·HMC5883L의 9축 데이터를 융합해 Roll/Pitch/Yaw를 추정하고, 외부 기울기의 반대 방향으로 SG90 서보를 보상 제어하는 3축 짐벌 시스템입니다. Driver–Service–AP 계층과 FreeRTOS 6개 Task로 책임을 분리했으며, Event-Driven 센서 획득과 Fail-Safe 복구를 적용해 센서·통신 이상 시에도 제어권을 잃지 않도록 설계했습니다.",
         role: [
@@ -1683,6 +1712,7 @@ void gimbalExecuteCombinedControl(void) {
         image: "images/2.SDL2_Rhythm_game_img.png",
         brief: "FFT 음정 판정 리듬 게임 (C언어 + SDL2)",
         num: 2,
+        period: "2026.03 ~ 2026.08",
         tags: ["C", "SDL2", "Fourier Transform", "AI 연계개발"],
         summary: "C언어와 SDL2 라이브러리를 활용한 리듬 게임으로, 마이크 입력 신호를 푸리에 변환(FFT)하여 사용자의 음정을 실시간으로 판정하는 알고리즘을 적용했습니다.",
         role: [
@@ -1704,8 +1734,10 @@ void gimbalExecuteCombinedControl(void) {
         brief: "7-State DHT11 FSM / 5 Timeout Paths / UART 8N1·117B",
         num: 3,
         tags: ["Verilog HDL", "FPGA (Basys3)", "DHT11", "UART", "CDC", "FSM", "Fail-Safe"],
-        period: "202X.XX ~ 202X.XX",
+        period: "2026.03 ~ 2026.03",
+
         target: "임베디드 SW 엔지니어 (차량 전장 및 방산 도메인)",
+
         hw: "Xilinx Basys3 (Artix-7), DHT11, UART, 7-Seg FND (Motor/Rotary/RTC는 저장소 내 단계적 통합 상태)",
         summary: "100MHz Basys3에서 DHT11 Single-wire 프로토콜을 7-State FSM으로 구현하고, 2-Stage Synchronizer·Open-Drain High-Z·5개 Timeout 복귀 경로로 비동기 센서 입력을 방어했습니다. Git 커밋 비교를 통해 UART TX의 16-bit framing 및 16배 baud 오류를 8N1·9600bps로 수정했으며, 6개 필드를 snapshot한 뒤 117-byte ASCII frame으로 직렬화하는 파이프라인을 구성했습니다.",
         role: [
@@ -1826,6 +1858,7 @@ void gimbalExecuteCombinedControl(void) {
         image: "images/4.IoT_Air_Drum_img.png",
         brief: "MPU6050 제스처 인식 AWS 에어드럼",
         num: 4,
+        period: "2021.11 ~ 2021.12",
         tags: ["ESP8266", "MPU6050", "AWS", "MQTT", "Python"],
         summary: "가속도/자이로 센서가 부착된 스틱의 움직임을 분석하여 클라우드 서버(AWS)를 거쳐 드럼 사운드를 재생하는 IoT 체감형 악기입니다.",
         role: [
@@ -1950,7 +1983,7 @@ void gimbalExecuteCombinedControl(void) {
         brief: "ATmega328P Baremetal GPS / NMEA 파서 / 메모리 최적화",
         num: 9,
         tags: ["ATmega328P", "AVR-GCC", "NMEA", "Bit-banging", "GY-NEO6MV2", "PlatformIO"],
-        period: "2026.XX ~ 2026.XX",
+        period: "2026.03 ~ 2026.04",
         target: "임베디드 SW 엔지니어 (저전력/자원 제한 도메인)",
         hw: "Arduino UNO (ATmega328P), GY-NEO6MV2 (u-blox 6 GPS 모듈), MS621FE 백업 배터리",
         summary: "외부 라이브러리(TinyGPS++)의 의존도를 탈피하고, NMEA 원본 데이터를 직접 파싱하는 커스텀 펌웨어를 구축하여 2KB RAM/32KB Flash의 ATmega328P 자원을 극대화한 프로젝트입니다. 단일 하드웨어 UART의 물리적 한계를 극복하기 위해 GPS 수신(Bit-banging, PB4)과 PC 송신(HW UART, PD1)을 물리적으로 분리하는 하이브리드 통신 아키텍처를 직접 설계했습니다.",
@@ -2104,7 +2137,7 @@ exports.handler = async (event) => {
 
     /* ===== Main / Sub 프로젝트 분리 ===== */
     const mainProjects = ['bmsota', 'gimbal', 'verilog'];
-    const subProjects  = ['yolo', 'parking', 'vending', 'airdrum', 'store', 'rhythm', 'gps', 'awsslack'];
+    const subProjects = ['yolo', 'parking', 'vending', 'airdrum', 'store', 'rhythm', 'gps', 'awsslack'];
     // 'cctv' — 비공개 처리
     const projectOrder = [...mainProjects, ...subProjects];
 
@@ -2261,7 +2294,7 @@ exports.handler = async (event) => {
     }
 
     function escapeHtml(s) {
-      return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+      return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     }
 
     function renderMatrix() {
