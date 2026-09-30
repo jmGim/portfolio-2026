@@ -40,6 +40,24 @@
       --r: 24px;
       --r-sm: 16px;
       font-family: "Pretendard", "Inter", "Apple SD Gothic Neo", system-ui, sans-serif;
+      --bg-code: #f1f5f9;
+    }
+
+    /* =========================================
+       DARK THEME
+    ========================================== */
+    [data-theme="dark"] {
+      --bg: #0f172a;
+      --bg-white: #1e293b;
+      --panel: rgba(30, 41, 59, 0.88);
+      --text: #e2e8f0;
+      --text-s: #94a3b8;
+      --muted: #64748b;
+      --line: rgba(255, 255, 255, 0.08);
+      --bg-code: #0f172a;
+      --sh-sm: 0 1px 3px rgba(0,0,0,.2), 0 4px 12px rgba(0,0,0,.15);
+      --sh-md: 0 4px 16px rgba(0,0,0,.25), 0 12px 40px rgba(0,0,0,.2);
+      --sh-lg: 0 8px 30px rgba(0,0,0,.35), 0 24px 60px rgba(0,0,0,.3);
     }
 
     *,
@@ -1137,6 +1155,97 @@
         box-shadow: none
       }
     }
+
+    /* =========================================
+       13. DARK MODE OVERRIDES
+    ========================================== */
+    [data-theme="dark"] .topbar {
+      background: rgba(15, 23, 42, .85);
+    }
+
+    [data-theme="dark"] .mobile-menu {
+      background: rgba(15, 23, 42, .96);
+    }
+
+    [data-theme="dark"] .hero-wrap {
+      background:
+        radial-gradient(ellipse at 20% 30%, rgba(14, 165, 233, .15), transparent 50%),
+        radial-gradient(ellipse at 75% 20%, rgba(16, 185, 129, .12), transparent 45%),
+        radial-gradient(ellipse at 50% 85%, rgba(139, 92, 246, .08), transparent 40%),
+        linear-gradient(180deg, #0f172a, #131b2e);
+    }
+
+    [data-theme="dark"] .main-content {
+      box-shadow: 0 -4px 24px rgba(0, 0, 0, .3);
+    }
+
+    [data-theme="dark"] .terminal {
+      border-color: rgba(255, 255, 255, .1);
+    }
+
+    [data-theme="dark"] .modal-overlay {
+      background: rgba(0, 0, 0, .5);
+    }
+
+    /* =========================================
+       14. TOGGLE BUTTONS (Theme / Language)
+    ========================================== */
+    .toggle-group {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-left: 8px;
+      padding-left: 16px;
+      border-left: 1px solid var(--line);
+    }
+
+    .toggle-btn {
+      display: grid;
+      place-items: center;
+      width: 34px;
+      height: 34px;
+      border-radius: 10px;
+      background: rgba(14, 165, 233, .06);
+      border: 1px solid var(--line);
+      font-size: 16px;
+      cursor: pointer;
+      transition: all .2s;
+      line-height: 1;
+    }
+
+    .toggle-btn:hover {
+      background: rgba(14, 165, 233, .12);
+      border-color: rgba(14, 165, 233, .25);
+    }
+
+    .lang-toggle {
+      font-size: 12px;
+      font-weight: 800;
+      color: var(--cyan);
+      width: auto;
+      padding: 0 10px;
+    }
+
+    .mobile-toggle-group {
+      display: flex;
+      gap: 8px;
+      padding: 10px 16px;
+      border-top: 1px solid var(--line);
+      margin-top: 4px;
+    }
+
+    .mobile-toggle-group .toggle-btn {
+      flex: 1;
+      width: auto;
+      height: 42px;
+      border-radius: 12px;
+      font-size: 14px;
+    }
+
+    .mobile-toggle-group .lang-toggle {
+      font-size: 13px;
+      flex: 1;
+    }
   </style>
 </head>
 
@@ -1171,6 +1280,10 @@
       <!-- 아이콘 제거: "📝 " 부분을 지우면 아이콘 없어짐 -->
       <a href="blog.html">Tech Blog</a>
       <a href="#contact">Contact</a>
+      <div class="toggle-group">
+        <button class="toggle-btn" id="theme-toggle" aria-label="테마 전환" title="Dark / Light">🌙</button>
+        <button class="toggle-btn lang-toggle" id="lang-toggle" aria-label="언어 전환" title="KO / EN">EN</button>
+      </div>
     </nav>
     <button class="hamburger" id="hamburger-btn" aria-label="메뉴 열기">
       <span></span><span></span><span></span>
@@ -1184,6 +1297,10 @@
     <a href="#skills">Stack</a>
     <a href="blog.html">Tech Blog</a>
     <a href="#contact">Contact</a>
+    <div class="mobile-toggle-group">
+      <button class="toggle-btn" id="theme-toggle-m" aria-label="테마 전환">🌙 Dark</button>
+      <button class="toggle-btn lang-toggle" id="lang-toggle-m" aria-label="언어 전환">🌐 EN</button>
+    </div>
   </div>
 
   <!-- ===== Hero Section (sticky — Apple-style card stack) ===== -->
@@ -1191,15 +1308,15 @@
     <div class="hero" id="hero-inner">
       <div class="hero-copy">
         <p class="eyebrow">C/C++ · STM32 · FreeRTOS · OTA · Sensor Fusion · Verilog</p>
-        <h1>HW/SW 검증하고<br>RTOS 위에서 제어하는<br><span>임베디드 SW 엔지니어</span></h1>
-        <p class="lead">
+        <h1 data-ko="HW/SW 검증하고&lt;br&gt;RTOS 위에서 제어하는&lt;br&gt;&lt;span&gt;임베디드 SW 엔지니어&lt;/span&gt;" data-en="Verifying HW/SW,&lt;br&gt;Controlling on RTOS —&lt;br&gt;&lt;span&gt;Embedded SW Engineer&lt;/span&gt;">HW/SW 검증하고<br>RTOS 위에서 제어하는<br><span>임베디드 SW 엔지니어</span></h1>
+        <p class="lead" data-ko="I2C 타이밍 충돌을 Mutex로 잡고, Flash 파티셔닝으로 OTA 신뢰성을 확보합니다. 센서 데이터를 수식으로 검증하고, RTOS Task 우선순위를 끝까지 튜닝하여 실시간 제약 조건을 만족시키는 안정적인 펌웨어를 만듭니다." data-en="Resolving I2C timing conflicts with Mutex, securing OTA reliability through Flash partitioning. Validating sensor data mathematically and tuning RTOS task priorities to deliver stable firmware that meets real-time constraints.">
           I2C 타이밍 충돌을 Mutex로 잡고, Flash 파티셔닝으로 OTA 신뢰성을 확보합니다.
           센서 데이터를 수식으로 검증하고, RTOS Task 우선순위를 끝까지 튜닝하여
           실시간 제약 조건을 만족시키는 안정적인 펌웨어를 만듭니다.
         </p>
         <div class="hero-actions">
-          <a class="btn primary" href="#projects">프로젝트 열기</a>
-          <a class="btn ghost" href="https://github.com/jmGim" target="_blank" rel="noreferrer">GitHub 보기</a>
+          <a class="btn primary" href="#projects" data-ko="프로젝트 열기" data-en="View Projects">프로젝트 열기</a>
+          <a class="btn ghost" href="https://github.com/jmGim" target="_blank" rel="noreferrer" data-ko="GitHub 보기" data-en="View GitHub">GitHub 보기</a>
         </div>
       </div>
       <aside class="terminal" aria-label="개발자 소개 터미널">
@@ -1233,7 +1350,7 @@ Data-driven Embedded SW Engineer
 
     <!-- Stats -->
     <section class="stats-section reveal" aria-label="포트폴리오 요약">
-      <div class="stat-card"><strong id="project-count">0</strong><span>프로젝트 경험</span></div>
+      <div class="stat-card"><strong id="project-count">0</strong><span data-ko="프로젝트 경험" data-en="Project Experience">프로젝트 경험</span></div>
       <div class="stat-card"><strong>MCU</strong><span>STM32, ESP32, Arduino</span></div>
       <div class="stat-card"><strong>Edge</strong><span>RPi, Jetson Nano, AWS</span></div>
       <div class="stat-card"><strong>RTOS</strong><span>FreeRTOS, OSEK</span></div>
@@ -1243,8 +1360,8 @@ Data-driven Embedded SW Engineer
     <section class="projects-section" id="projects">
       <div class="section-heading reveal">
         <p class="eyebrow">Projects</p>
-        <h2>프로젝트 포트폴리오</h2>
-        <p>카드를 클릭하면 상세 정보를 확인할 수 있습니다.</p>
+        <h2 data-ko="프로젝트 포트폴리오" data-en="Project Portfolio">프로젝트 포트폴리오</h2>
+        <p data-ko="카드를 클릭하면 상세 정보를 확인할 수 있습니다." data-en="Click a card to view project details.">카드를 클릭하면 상세 정보를 확인할 수 있습니다.</p>
       </div>
 
       <!-- Main Projects -->
@@ -1269,7 +1386,7 @@ Data-driven Embedded SW Engineer
       </div>
 
       <div class="matrix-btn-wrap reveal">
-        <button class="btn ghost" id="matrix-btn">📊 전체 프로젝트 비교 매트릭스 보기</button>
+        <button class="btn ghost" id="matrix-btn" data-ko="📊 전체 프로젝트 비교 매트릭스 보기" data-en="📊 View Project Comparison Matrix">📊 전체 프로젝트 비교 매트릭스 보기</button>
       </div>
     </section>
 
@@ -1277,7 +1394,7 @@ Data-driven Embedded SW Engineer
     <section class="skills-section" id="skills">
       <div class="section-heading reveal">
         <p class="eyebrow">Core Stack</p>
-        <h2>실시간 시스템을 위한 기술 스택</h2>
+        <h2 data-ko="실시간 시스템을 위한 기술 스택" data-en="Tech Stack for Real-Time Systems">실시간 시스템을 위한 기술 스택</h2>
       </div>
       <div class="skill-grid">
 
@@ -1407,8 +1524,8 @@ Data-driven Embedded SW Engineer
       <div class="contact-wrap reveal">
         <div>
           <p class="eyebrow">Contact</p>
-          <h2>제약 조건을 코드로 해결합니다.</h2>
-          <p>"데이터시트를 보고 레지스터를 설정하고, 오실로스코프로 파형을 확인합니다. 라이브러리에 의존하기 전에 HAL 아래의 동작을 먼저 이해하는 개발자입니다."</p>
+          <h2 data-ko="제약 조건을 코드로 해결합니다." data-en="Solving Constraints Through Code.">제약 조건을 코드로 해결합니다.</h2>
+          <p data-ko="&quot;데이터시트를 보고 레지스터를 설정하고, 오실로스코프로 파형을 확인합니다. 라이브러리에 의존하기 전에 HAL 아래의 동작을 먼저 이해하는 개발자입니다.&quot;" data-en="&quot;I read datasheets to configure registers and verify waveforms with an oscilloscope. Before relying on libraries, I first understand the behavior beneath the HAL.&quot;">"데이터시트를 보고 레지스터를 설정하고, 오실로스코프로 파형을 확인합니다. 라이브러리에 의존하기 전에 HAL 아래의 동작을 먼저 이해하는 개발자입니다."</p>
         </div>
         <div class="contact-card">
           <span>GitHub</span><strong>github.com/jmGim</strong>
@@ -2248,7 +2365,7 @@ exports.handler = async (event) => {
             html += `<ul>${sec.bullets.map(b => `<li>${b}</li>`).join('')}</ul>`;
           }
           if (sec.code) {
-            html += `<pre style="background:#f1f5f9;border:1px solid var(--line);border-radius:12px;padding:16px 20px;font-family:'JetBrains Mono',monospace;font-size:12px;line-height:1.65;overflow-x:auto;margin:12px 0"><code>${escapeHtml(sec.code)}</code></pre>`;
+            html += `<pre style="background:var(--bg-code);border:1px solid var(--line);border-radius:12px;padding:16px 20px;font-family:'JetBrains Mono',monospace;font-size:12px;line-height:1.65;overflow-x:auto;margin:12px 0"><code>${escapeHtml(sec.code)}</code></pre>`;
           }
         });
       }
@@ -2460,6 +2577,69 @@ exports.handler = async (event) => {
         mobileMenu.classList.remove('open');
       });
     });
+
+    /* ==============================================
+       DARK / LIGHT THEME TOGGLE
+    =============================================== */
+    function setTheme(theme) {
+      document.documentElement.setAttribute('data-theme', theme);
+      localStorage.setItem('portfolio-theme', theme);
+      const icon = theme === 'dark' ? '☀️' : '🌙';
+      const mLabel = theme === 'dark' ? '☀️ Light' : '🌙 Dark';
+      document.getElementById('theme-toggle').textContent = icon;
+      document.getElementById('theme-toggle-m').textContent = mLabel;
+    }
+
+    // Initialize theme from localStorage or system preference
+    const savedTheme = localStorage.getItem('portfolio-theme') ||
+      (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+    setTheme(savedTheme);
+
+    // Listen for system preference changes
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', e => {
+      if (!localStorage.getItem('portfolio-theme')) {
+        setTheme(e.matches ? 'dark' : 'light');
+      }
+    });
+
+    // Theme toggle click handlers
+    function toggleTheme() {
+      setTheme(document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
+    }
+    document.getElementById('theme-toggle').addEventListener('click', toggleTheme);
+    document.getElementById('theme-toggle-m').addEventListener('click', toggleTheme);
+
+    /* ==============================================
+       KO / EN LANGUAGE TOGGLE
+    =============================================== */
+    let currentLang = localStorage.getItem('portfolio-lang') || 'ko';
+
+    function setLang(lang) {
+      currentLang = lang;
+      localStorage.setItem('portfolio-lang', lang);
+      document.documentElement.lang = lang === 'ko' ? 'ko' : 'en';
+
+      // Update toggle button text
+      const btnText = lang === 'ko' ? 'EN' : 'KO';
+      const mBtnText = lang === 'ko' ? '🌐 EN' : '🌐 KO';
+      document.getElementById('lang-toggle').textContent = btnText;
+      document.getElementById('lang-toggle-m').textContent = mBtnText;
+
+      // Switch all elements with data-ko / data-en attributes
+      document.querySelectorAll('[data-ko][data-en]').forEach(el => {
+        el.innerHTML = el.getAttribute(`data-${lang}`);
+      });
+    }
+
+    // Initialize language
+    setLang(currentLang);
+
+    // Language toggle click handlers
+    function toggleLang() {
+      setLang(currentLang === 'ko' ? 'en' : 'ko');
+    }
+    document.getElementById('lang-toggle').addEventListener('click', toggleLang);
+    document.getElementById('lang-toggle-m').addEventListener('click', toggleLang);
   </script>
 </body>
 
