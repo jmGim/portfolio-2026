@@ -1556,6 +1556,108 @@ Data-driven Embedded SW Engineer
        PROJECT DATA — 이미지 번호/제목별 매칭
     =============================================== */
     const projects = {
+      qtledkey: {
+        title: "Qt · Linux 디바이스 파일 LED/KEY 연동 IoT 시스템",
+        subtitle: "/dev/ledkey 사용자 공간 연동 + Qt GUI · TCP · 차트 · SQLite · OpenCV",
+        image: "images/11.Qt_LedKey_Device_Driver_img.jpg",
+        brief: "Raspberry Pi LED/KEY 디바이스 파일을 Qt 이벤트 루프에 연결하고 TCP·센서 차트·SQLite·OpenCV로 확장",
+        num: 11,
+        tags: ["Qt", "C++", "Embedded Linux", "Device File", "QSocketNotifier", "TCP", "SQLite", "OpenCV"],
+        period: "2026.07.03 ~ 2026.07.10 (Git 커밋 기록 범위)",
+        target: "Qt 응용 / Embedded Linux 시스템 통합",
+        hw: "Raspberry Pi LED/KEY 구성, /dev/ledkey, USB 웹캠, Qt Widgets·Charts·SQL·WebEngine, OpenCV",
+        summary: "Linux 디바이스 파일 /dev/ledkey를 활용하는 Qt 장치 접근 계층(LedKeyDev)을 만들고, KEY 입력과 LED 출력을 다이얼·체크박스·LCD에 연결했습니다. 이후 TCP 클라이언트, 센서 실시간 차트, SQLite 이력 관리, OpenCV 색상 분류·변화 감지로 기능을 확장했습니다. 커널 드라이버 자체는 이 프로젝트의 범위가 아니며 드라이버 인터페이스를 활용한 사용자 공간 시스템 통합이 핵심입니다.",
+        role: [
+          "LedKeyDev: /dev/ledkey open, 1바이트 KEY read · LED write, QSocketNotifier로 읽기 준비 이벤트 연결",
+          "Tab1~Tab7 기능별 클래스 분리 및 MainWidget의 signal/slot 연결 구성",
+          "TCP 클라이언트와 메시지 라우터: LED/LAMP/GAS/SENSOR 분기",
+          "QLineSeries·QDateTimeAxis 실시간 조도 차트, SQLite 저장·기간 조회·삭제",
+          "OpenCV VideoCapture 기반 중앙 ROI HSV 색상 분류 및 프레임 변화 감지, 결과 TCP 전송"
+        ],
+        roleNote: "커밋 계정은 확인되나 팀 규모·개인 담당 범위, 재사용 코드(keyboard.cpp는 TI 라이선스 명시)는 구분해 기재해야 합니다.",
+        architecture: [
+          "물리 KEY → /dev/ledkey → LedKeyDev → Tab1 체크박스·LCD (장치 입력 경로)",
+          "마우스 체크박스 → TCP LED 명령 → 서버 응답 → 다이얼 → LED write (서버 경유 경로)",
+          "SocketClient → Tab2 파서 → Tab3(LAMP/GAS) · Tab4 차트 · Tab5 SQLite",
+          "WebCamThread(OpenCV) → COLOR / INTRUDER / GAS 메시지 → SocketClient"
+        ],
+        detailSections: [
+          {
+            heading: "🔌 3.1 /dev/ledkey 장치 파일 → Qt 이벤트 루프",
+            desc: "QFile로 장치를 열고 fd를 QSocketNotifier에 등록해 읽기 준비 시 KEY 번호를 signal로 전달합니다. LED는 8비트 패턴을 1바이트로 write합니다.",
+            bullets: [
+              "<strong>활용 범위</strong>: 장치 파일 계약 이해와 사용자 공간 연동 (커널 소스·poll·IRQ 구현은 별도 증빙 필요)",
+              "<strong>주의</strong>: Unbuffered는 non-blocking이 아님, readiness는 드라이버 .poll 구현에 의존",
+              "<strong>개선안</strong>: open 실패 시 중단, KEY 1~8·LED 0~255 검사, write 결과 확인"
+            ],
+            code: `pQFile = new QFile(DEVFILENAME);
+pQFile->open(QFile::ReadWrite | QFile::Unbuffered);
+pQSocketNotifier = new QSocketNotifier(pQFile->handle(),
+                                       QSocketNotifier::Read, this);
+connect(pQSocketNotifier, SIGNAL(activated(int)),
+        this, SLOT(readKeyDataSlot(int)));`
+          },
+          {
+            heading: "🎛️ 3.2 KEY 비트마스크 상태와 UI 연결",
+            desc: "KEY 번호를 XOR 비트 토글로 8비트 상태에 반영하고 LCD·체크박스를 갱신합니다. 마우스 클릭은 같은 상태로 서버 LED 명령을 만듭니다.",
+            bullets: [
+              "물리 KEY는 UI만 갱신, 마우스 클릭은 서버로 명령 전송 — 두 경로를 구분해 설명",
+              "XOR 토글은 눌림/해제 상태가 아닌 이벤트 의미임을 문서화"
+            ],
+            code: `lcdData = lcdData ^ (0x01 << (keyNo - 1));
+ui->pLNKey->display(lcdData);
+QString strSendLed = "[KSH_QT]LED@0x" + QString::number(lcdData, 16);
+emit socketWriteDataSig(strSendLed);`
+          },
+          {
+            heading: "📡 3.3 TCP 메시지 라우팅과 센서 데이터 관리",
+            desc: "수신 메시지를 @ 구분 필드로 나눠 LED는 장치 write, LAMP/GAS는 제어 패널, SENSOR는 차트와 SQLite로 분기합니다. SensorManKJMM에서는 조도·온도·습도 3개 시리즈로 확장했습니다.",
+            bullets: [
+              "Tab7은 조도 1채널, 온습도는 별도 SensorManKJMM에서 처리 (구분 표기)",
+              "수신 시각을 타임스탬프로 사용 — 센서 측정 시각 동기화는 주장하지 않음"
+            ],
+            code: `if(strList[2].compare("LED") == 0) { /* 16진 파싱 → ledWriteSig */ }
+else if(strList[2].indexOf("LAMP") == 0 || strList[2].indexOf("GAS") == 0)
+    emit tab3RecvDataSig(strList);
+else if(strList[2].indexOf("SENSOR") == 0) {
+    emit tab4RecvDataSig(strList);
+    emit tab5RecvDataSig(strList);
+}`
+          },
+          {
+            heading: "📷 3.4 OpenCV 색상 분류 · 변화 감지",
+            desc: "중앙 64×64 ROI의 HSV Hue 평균으로 RED/GREEN/BLUE/NONE을 분류하고, 프레임 차이 픽셀 비율이 임계값을 넘으면 INTRUDER 메시지를 전송합니다. 학습 기반 인식이 아닌 규칙 기반 프로토타입입니다.",
+            bullets: [
+              "색이 바뀔 때만 COLOR 메시지를 전송해 중복 억제",
+              "리뷰 과제: GUI 직접 접근 제거, absdiff, 비교별 카운트 초기화, S/V 조건"
+            ],
+            code: `cvtColor(frameRoi, hsvImage, COLOR_BGR2HSV);
+meanHsv = mean(hsvImage);
+if (170 <= meanHsv[0] || meanHsv[0] < 10) strColor = "RED";
+else if (50 <= meanHsv[0] && meanHsv[0] < 70) strColor = "GREEN";
+else if (110 <= meanHsv[0] && meanHsv[0] < 130) strColor = "BLUE";
+else strColor = "NONE";`
+          }
+        ],
+        verification: [
+          "소스 구현 및 Git 커밋 이력(2026.07.03~07.10, 6 commits) 확인",
+          "실물 보드 동작·새 환경 빌드·성능·정확도는 미검증 — 시험 자료로 보강 예정",
+          "코드 리뷰로 도출한 개선 과제 3종은 블로그 글로 정리"
+        ],
+        troubleshooting: [
+          "[TCP] read 한 번을 명령 한 개로 파싱 → 누적 버퍼 + 줄바꿈 프레임 분리 제안",
+          "[DB] 시작 시 DROP TABLE, date 단일 PK 충돌 → IF NOT EXISTS, row ID·밀리초 시각, prepared query 제안",
+          "[Thread] 작업 스레드의 QLabel 직접 갱신 → frameReady signal + 메인 스레드 표시 제안",
+          "[Device] open 실패 후 notifier 생성, KEY 범위 미검사 → 초기화 중단·범위 검사 제안"
+        ],
+        capabilitySummary: "Linux 디바이스 파일 계약을 이해하고 <strong>Qt 이벤트 루프·TCP·데이터·영상 기능을 하나의 장치 연동 앱으로 통합</strong>한 경험, 그리고 코드 리뷰로 스레드·통신·DB 신뢰성 과제를 도출하는 역량을 보여줍니다. 개선안은 아직 적용·시험 전입니다.",
+        links: [
+          ["GitHub", "https://github.com/jmGim/qt_src/tree/main/qt_src/"],
+          ["Blog · 디바이스 파일 × Qt", "posts/qt-ledkey-device-file-event-loop.html"],
+          ["Blog · TCP 프레이밍", "posts/qt-tcp-framing-troubleshooting.html"],
+          ["Blog · 스레드 안전성", "posts/qt-opencv-thread-safety-troubleshooting.html"]
+        ]
+      },
       bmsota: {
         title: "BMS OTA 통합 플랫폼",
         subtitle: "ASPICE 기반 SWRS 정의 및 오프라인 HIL 파이프라인 구축",
@@ -2254,7 +2356,7 @@ exports.handler = async (event) => {
 
     /* ===== Main / Sub 프로젝트 분리 ===== */
     const mainProjects = ['bmsota', 'gimbal', 'verilog'];
-    const subProjects = ['yolo', 'parking', 'vending', 'airdrum', 'store', 'rhythm', 'gps', 'awsslack'];
+    const subProjects = ['yolo', 'parking', 'vending', 'airdrum', 'store', 'rhythm', 'gps', 'awsslack', 'qtledkey'];
     // 'cctv' — 비공개 처리
     const projectOrder = [...mainProjects, ...subProjects];
 

@@ -35,8 +35,28 @@
       --sh-md: 0 4px 16px rgba(0,0,0,.06), 0 12px 40px rgba(0,0,0,.06);
       --sh-lg: 0 8px 30px rgba(0,0,0,.08), 0 24px 60px rgba(0,0,0,.10);
       --r-sm: 16px;
+      --bg-code: #f1f5f9;
       font-family: "Pretendard", system-ui, sans-serif;
     }
+
+    /* ===== Dark Theme ===== */
+    [data-theme="dark"] {
+      --bg: #0f172a;
+      --bg-white: #1e293b;
+      --bg-card: #1e293b;
+      --line: rgba(255,255,255,.08);
+      --text: #e2e8f0;
+      --text-s: #94a3b8;
+      --muted: #64748b;
+      --bg-code: #0f172a;
+      --sh-sm: 0 1px 3px rgba(0,0,0,.2), 0 4px 12px rgba(0,0,0,.15);
+      --sh-md: 0 4px 16px rgba(0,0,0,.25), 0 12px 40px rgba(0,0,0,.2);
+      --sh-lg: 0 8px 30px rgba(0,0,0,.35), 0 24px 60px rgba(0,0,0,.3);
+    }
+    [data-theme="dark"] .navbar { background: rgba(15,23,42,.85) }
+    [data-theme="dark"] .hero { background: radial-gradient(ellipse at 20% 30%, rgba(14,165,233,.12), transparent 50%), radial-gradient(ellipse at 75% 20%, rgba(16,185,129,.10), transparent 45%) }
+    [data-theme="dark"] .modal-body pre { background: var(--bg-code) }
+    [data-theme="dark"] .snippet-code { background: var(--bg-code) }
     *, *::before, *::after { box-sizing: border-box; margin: 0 }
     html { scroll-behavior: smooth }
     body { background: var(--bg); color: var(--text); min-height: 100vh; -webkit-font-smoothing: antialiased }
@@ -157,8 +177,22 @@
     .blog-footer a { color: var(--text-s); transition: color .2s }
     .blog-footer a:hover { color: var(--cyan) }
 
-    /* ===== Language Toggle ===== */
-    .lang-toggle { display: flex; border-radius: 10px; overflow: hidden; border: 1px solid var(--line); box-shadow: var(--sh-sm); margin-left: auto }
+    /* ===== Theme Toggle Button ===== */
+    .theme-toggle-btn {
+      display: grid;
+      place-items: center;
+      width: 34px;
+      height: 34px;
+      border-radius: 10px;
+      background: rgba(14, 165, 233, .06);
+      border: 1px solid var(--line);
+      font-size: 16px;
+      cursor: pointer;
+      transition: all .2s;
+      flex-shrink: 0;
+      margin-left: 8px;
+    }
+    .theme-toggle-btn:hover { background: rgba(14,165,233,.12); border-color: rgba(14,165,233,.25) }
     .lang-btn { padding: 7px 14px; font-size: 12px; font-weight: 700; background: var(--bg-white); color: var(--text-s); transition: all .2s }
     .lang-btn.active { background: var(--cyan); color: #fff }
     .lang-btn:hover:not(.active) { background: rgba(14,165,233,.05) }
@@ -199,6 +233,7 @@
         <button class="lang-btn active" data-lang="ko">KO</button>
         <button class="lang-btn" data-lang="en">EN</button>
       </div>
+      <button class="theme-toggle-btn" id="theme-toggle" aria-label="테마 전환" title="Dark / Light">🌙</button>
     </div>
   </nav>
 
@@ -273,9 +308,59 @@
     ======================================== */
     const POSTS = [
       {
+        id: 17,
+        title: "/dev/ledkey를 Qt 이벤트 루프에 연결하기: QSocketNotifier와 디바이스 파일 계약",
+        title_en: "Connecting /dev/ledkey to the Qt Event Loop: QSocketNotifier and the Device File Contract",
+        excerpt: "Linux 디바이스 파일의 read/write 계약과 fd 읽기 준비 이벤트를 Qt signal/slot으로 연결하는 방법, 그리고 드라이버 readiness·Unbuffered·Qt 6 시그니처 등 코드 리뷰 보완점을 정리했습니다.",
+        excerpt_en: "The read/write contract of a Linux device file, wiring fd readiness to Qt signals/slots, and review findings on driver readiness, Unbuffered and Qt 6 signal signatures.",
+        category: "firmware",
+        level: "Intermediate",
+        date: "2026. 10. 09",
+        readTime: "9 min",
+        tags: ["Embedded Linux", "Device File", "Qt", "QSocketNotifier", "Raspberry Pi"],
+        url: "posts/qt-ledkey-device-file-event-loop.html",
+        sections: [
+          { type: "p", text: "/dev/ledkey는 1바이트 read(KEY 번호)와 1바이트 write(LED 8비트 패턴) 계약을 가진 문자 장치입니다. QSocketNotifier로 fd 읽기 준비를 이벤트 루프에 연결해 GUI를 막지 않고 KEY 입력을 받습니다." }
+        ]
+      },
+      {
+        id: 18,
+        title: "read 한 번 = 명령 한 개? Qt TCP 스트림 프레이밍과 SQLite 저장 트러블슈팅",
+        title_en: "One read = One Command? Qt TCP Stream Framing and SQLite Storage Troubleshooting",
+        excerpt: "TCP는 메시지 경계가 없습니다. 줄바꿈 프레임 분리, 필드 검증, prepared query, 시작 시 DROP TABLE 문제를 코드 리뷰로 분석한 개선 제안입니다.",
+        excerpt_en: "TCP has no message boundaries. Newline framing, field validation, prepared queries and the startup DROP TABLE issue, analysed through code review as improvement proposals.",
+        category: "troubleshooting",
+        level: "Advanced",
+        date: "2026. 10. 09",
+        readTime: "10 min",
+        tags: ["TCP", "QTcpSocket", "SQLite", "Framing", "Qt"],
+        url: "posts/qt-tcp-framing-troubleshooting.html",
+        sections: [
+          { type: "p", text: "수신 read 결과 전체를 하나의 메시지로 파싱하는 구조를 누적 버퍼 + 줄바꿈 프레임 분리로 바꾸고, SQLite 저장의 키 충돌·SQL 조합·재시작 삭제 문제를 정리했습니다." }
+        ]
+      },
+      {
+        id: 19,
+        title: "작업 스레드에서 GUI를 직접 바꾸는 코드: WebCamThread 리뷰와 스레드 안전 설계",
+        title_en: "Touching the GUI from a Worker Thread: WebCamThread Review and Thread-Safe Design",
+        excerpt: "QThread에서 QLabel 직접 접근, 공유 플래그 경쟁, QImage 버퍼 수명, 프레임 차이 포화 연산과 HSV 분류의 한계를 분석하고 signal 기반 구조를 제안합니다.",
+        excerpt_en: "Direct QLabel access from QThread, shared-flag races, QImage buffer lifetime, saturated frame diff and HSV limits, with a signal-based redesign.",
+        category: "troubleshooting",
+        level: "Advanced",
+        date: "2026. 10. 09",
+        readTime: "11 min",
+        tags: ["QThread", "OpenCV", "HSV", "Thread Safety", "C++"],
+        url: "posts/qt-opencv-thread-safety-troubleshooting.html",
+        sections: [
+          { type: "p", text: "프레임을 signal로 전달해 메인 스레드에서만 표시하고, absdiff와 비교별 카운트, 안전한 종료 처리로 개선하는 설계를 정리했습니다. 수정과 측정은 후속 과제입니다." }
+        ]
+      },
+      {
         id: 13,
         title: "STM32F411 짐벌 리소스 분석: I2C 12.6% 병목과 512KB OTA 파티셔닝",
+        title_en: "STM32F411 Gimbal Resource Analysis: I2C 12.6% Bottleneck & 512KB Flash Design",
         excerpt: "20ms 제어 주기에서 센서 버스가 차지하는 시간을 정량화하고, 512KB Flash를 Bootloader·Application·Download Slot으로 분리한 설계 근거를 정리했습니다.",
+        excerpt_en: "Quantifying sensor bus utilization in the 20ms control loop and establishing the design rationale for partitioning 512KB Flash into Bootloader, Application, and Download slots.",
         category: "architecture",
         level: "Expert",
         date: "2026. 08. 27",
@@ -304,7 +389,9 @@
       {
         id: 12,
         title: "STM32 3축 짐벌: FreeRTOS 실시간 제어와 Fail-Safe 아키텍처",
+        title_en: "STM32 3-Axis Gimbal: FreeRTOS Real-Time Control & Fail-Safe Architecture",
         excerpt: "MPU6050·HMC5883L 9축 센서 융합부터 Event-Driven Task, float PWM 보간, Interrupt Storm과 UART Starvation 복구까지 전체 제어 경로를 정리했습니다.",
+        excerpt_en: "Full control path from MPU6050/HMC5883L 9-axis sensor fusion and Event-Driven Tasks to float PWM interpolation and recovery from Interrupt Storm and UART Starvation.",
         category: "architecture",
         level: "Expert",
         date: "2026. 08. 27",
@@ -341,7 +428,9 @@
       {
         id: 8,
         title: "USB-CAN은 열렸지만 프레임이 0건: 제품 결함과 HIL 인프라 장애 분리",
+        title_en: "USB-CAN Opened But Zero Frames: Separating Product Defect from HIL Infrastructure Issue",
         excerpt: "Seeed USB-CAN 연결 성공 뒤에도 CAN 프레임이 수신되지 않은 상황에서, 물리 계층·backend·채널을 순서대로 검증하고 False-Fail을 차단한 기록.",
+        excerpt_en: "After Seeed USB-CAN connected successfully but received zero CAN frames: verifying physical layer, backend, and channel sequentially to block False-Fail classification.",
         category: "troubleshooting",
         level: "Advanced",
         date: "2026. 08. 27",
@@ -371,7 +460,9 @@
       {
         id: 9,
         title: "EVSE Application과 OTA Staging Flash 중첩: Linker Layout을 CI에서 차단",
+        title_en: "EVSE Application & OTA Staging Flash Overlap: Catching Linker Layout in CI",
         excerpt: "2 MiB Flash의 Application 영역이 OTA Staging을 침범할 수 있었던 계산 오류를 수정하고, 주소·크기·Artifact SHA 검증을 CI Gate로 만든 과정.",
+        excerpt_en: "Fixing a calculation error where the 2 MiB Flash Application region could overwrite OTA Staging, and converting address, size, and artifact SHA checks into CI Gates.",
         category: "troubleshooting",
         level: "Expert",
         date: "2026. 08. 27",
@@ -395,7 +486,9 @@
       {
         id: 10,
         title: "Cached BMS 상태를 새 ACK로 오인: 릴레이 조기 ON을 막는 Freshness Oracle",
+        title_en: "Mistaking Cached BMS State for Fresh ACK: Freshness Oracle Preventing Premature Relay Closure",
         excerpt: "START 이전의 charge_permit=1을 새 승인으로 오인하지 않도록 CAN sequence와 시간 순서를 검증하고, PE11 GPIO까지 독립 확인한 안전 시험.",
+        excerpt_en: "Preventing early relay activation by validating CAN sequence and temporal ordering so a cached charge_permit=1 is never mistaken for a new ACK, with independent PE11 GPIO verification.",
         category: "troubleshooting",
         level: "Expert",
         date: "2026. 08. 27",
@@ -422,7 +515,9 @@ assert request.timestamp < ack.timestamp < relay.timestamp` },
       {
         id: 11,
         title: "OTA 전원 차단 시험: 승인되지 않은 PASS 기준을 만들지 않은 이유",
+        title_en: "OTA Sudden Power Loss Test: Why We Refused Unauthorized PASS Criteria",
         excerpt: "Vector-last commit으로 불완전 이미지 실행을 막되, A/B 롤백과 전원 복구 Oracle 부재를 숨기지 않고 GAP_REQUIREMENT로 분류한 QA 기록.",
+        excerpt_en: "Using Vector-last commit to block incomplete image execution, while honestly classifying missing A/B rollback and power-recovery Oracle as GAP_REQUIREMENT instead of forcing a PASS verdict.",
         category: "troubleshooting",
         level: "Expert",
         date: "2026. 08. 27",
@@ -441,64 +536,12 @@ storage_write(0U, pending_vector_table, 8U);` },
           { type: "ul", items: [
             "A/B 이미지와 이전 정상 버전 자동 롤백 정책 부재",
             "Boot 실패 횟수 및 전원 차단 위치 기반 복구 기준 미승인",
-            "Signed Manifest, ECU Identity, Anti-rollback 정책 미완성"
-          ]},
-          { type: "h3", text: "✅ QA 판단" },
-          { type: "p", text: "승인된 복구 Oracle이 없어 전원 차단 시험을 임의로 PASS/FAIL 처리하지 않고 GAP_REQUIREMENT로 등록했습니다. 구현된 보호와 미완성 정책의 경계를 명확히 남겼습니다." }
-        ]
-      },
-      {
-        id: 1,
-        title: "I2C 버스 Hang 현상 분석: MPU6050 + HMC5883L 동시 접근 트러블슈팅",
-        title_en: "I2C Bus Hang Analysis: MPU6050 + HMC5883L Concurrent Access Troubleshooting",
-        excerpt: "FreeRTOS 환경에서 두 센서가 동일 I2C1 버스를 경쟁적으로 접근할 때 발생하는 HAL_BUSY 현상의 원인과 Mutex 기반 해결 기록.",
-        excerpt_en: "Root cause analysis and Mutex-based solution for HAL_BUSY when two sensors competitively access the same I2C1 bus in FreeRTOS.",
-        category: "troubleshooting",
-        level: "Advanced",
-        date: "2026. 07. 20",
-        readTime: "10 min",
-        tags: ["I2C", "FreeRTOS", "Mutex", "MPU6050", "HMC5883L"],
-        url: "posts/i2c-mutex-troubleshooting.html",  // ← Ctrl+클릭 시 열리는 페이지
-        // 포스트 상세 내용 (모달에 표시)
-        sections: [
-          { type: "h3", text: "🔍 문제 상황" },
-          { type: "p", text: "gyroSystemTask와 magSystemTask가 동일 I2C1 버스에서 HAL_I2C_Mem_Read()를 호출할 때, RTOS 컨텍스트 스위칭 타이밍에 의해 간헐적으로 I2C 버스가 HAL_BUSY 상태로 멈추는 현상 발생." },
-          { type: "img", src: "https://upload.wikimedia.org/wikipedia/commons/thumb/0/04/I2C_controller-target.svg/640px-I2C_controller-target.svg.png", alt: "I2C 버스 구조도" },
-          { type: "h3", text: "📊 원인 분석" },
-          { type: "ul", items: [
-            "두 Task가 동일 I2C 페리페럴에 비동기 접근 → HAL 내부 Lock 플래그 경합",
-            "Task A가 I2C Read 중 컨텍스트 스위칭 → Task B가 같은 I2C에 Read 시도 → HAL_BUSY 반환",
-            "오실로스코프 SDA/SCL 파형 확인: ACK 후 STOP 없이 새로운 START 발생"
-          ]},
-          { type: "h3", text: "✅ 해결: osMutex 기반 I2C 접근 보호" },
-          { type: "p", text: "공유 I2C 버스에 osMutex를 적용하여 한 번에 하나의 Task만 접근할 수 있도록 직렬화했습니다." },
-          { type: "code", lang: "C", title: "I2C Mutex 적용 패턴", code: `// hw.c — 시스템 초기화 시 Mutex 생성
-osMutexId_t i2c1_mutex;
-void hwInit(void) {
-  i2c1_mutex = osMutexNew(NULL);
-}
-
-// gyro.c — 센서 읽기 시 Mutex 보호
-bool Gyro_Read(gyro_data_t *data) {
-  osMutexAcquire(i2c1_mutex, osWaitForever);
-  HAL_StatusTypeDef ret = HAL_I2C_Mem_Read(
-    &hi2c1, MPU6050_ADDR << 1, 0x3B,
-    I2C_MEMADD_SIZE_8BIT, raw, 14, 50);
-  osMutexRelease(i2c1_mutex);
-  return (ret == HAL_OK);
-}` },
-          { type: "h3", text: "📈 결과" },
-          { type: "ul", items: [
-            "I2C Hang 현상 완전 해소 (48시간 연속 동작 테스트 통과)",
-            "HAL Timeout을 50ms로 설정하여 만약의 Hang에도 자동 복구",
-            "두 센서 데이터 갱신 주기: MPU6050 50Hz + HMC5883L 10Hz 안정 유지"
-          ]}
-        ]
-      },
-      {
+            "Signed Manife      {
         id: 2,
         title: "ESP8266 OTA: Active vs Passive Receive Mode 데이터 유실 해결",
+        title_en: "ESP8266 OTA: Resolving Data Loss via Passive Receive Mode",
         excerpt: "AWS S3에서 펌웨어 다운로드 시 중간 청크 누락으로 CRC32 불일치가 발생한 원인과 Passive Mode 전환으로 해결한 과정.",
+        excerpt_en: "Root cause and resolution for CRC32 mismatches from mid-chunk loss during firmware download from AWS S3, solved by switching to Passive Receive Mode.",
         category: "communication",
         level: "Expert",
         date: "2026. 07. 15",
@@ -511,8 +554,8 @@ bool Gyro_Read(gyro_data_t *data) {
           { type: "code", lang: "Text", title: "Active Mode 문제점", code: `[Active Mode — 기존]
 ESP8266 → +IPD,512:<data> → STM32 UART RX (256B Queue)
                                     ↓
-                              Queue Overflow!
-                              데이터 유실 → CRC32 불일치
+                               Queue Overflow!
+                               데이터 유실 → CRC32 불일치
 
 [Passive Mode — 해결]
 STM32 → AT+CIPRECVDATA=512 → ESP8266 응답 대기
@@ -548,7 +591,9 @@ uint32_t esp8266_RecvChunk(uint8_t *buf, uint32_t size) {
       {
         id: 3,
         title: "STM32 Flash 4-Partition OTA 부트로더 설계: CRC32 이중 검증",
+        title_en: "STM32 Flash 4-Partition OTA Bootloader Design: Dual CRC32 Verification",
         excerpt: "512KB Flash를 Bootloader/Flag/App/Download로 분할하고 벡터 테이블 검증 + CRC32 이중 검증으로 OTA 업데이트 신뢰성을 확보한 설계 문서.",
+        excerpt_en: "Partitioning 512KB Flash into Bootloader/Flag/App/Download regions, securing OTA update reliability through vector table validation and dual CRC32 verification.",
         category: "architecture",
         level: "Expert",
         date: "2026. 07. 10",
@@ -603,7 +648,107 @@ uint32_t esp8266_RecvChunk(uint8_t *buf, uint32_t size) {
       {
         id: 4,
         title: "상보필터 기반 3축 자세 추정: Roll/Pitch/Yaw 구현 및 튜닝",
+        title_en: "3-Axis Attitude Estimation via Complementary Filter: Roll/Pitch/Yaw Tuning",
         excerpt: "MPU6050 자이로+가속도, HMC5883L 지자기 데이터를 상보필터로 융합하여 3축 자세를 추정한 구현 기록.",
+        excerpt_en: "Fusing MPU6050 gyro/accelerometer and HMC5883L magnetometer data via complementary filter to estimate Roll/Pitch/Yaw attitude.",
+        category: "firmware",
+        level: "Advanced",
+        date: "2026. 07. 05",
+        readTime: "11 min",
+        tags: ["Sensor Fusion", "Complementary Filter", "MPU6050", "HMC5883L"],
+        sections: [
+          { type: "h3", text: "📐 상보필터 원리" },
+          { type: "p", text: "자이로스코프의 빠른 반응(단기 정확)과 가속도계의 절대 각도(장기 안정)를 가중 합산하여, 두 센서의 단점을 상호 보상합니다." },
+          { type: "code", lang: "C", title: "상보필터 구현 (Roll/Pitch)", code: `#define ALPHA  0.96f   // 자이로 가중치
+#define DT     0.02f   // 샘플링 주기 (50Hz)
+#define RAD2DEG 57.2957795f
+
+// Roll 상보필터
+float accel_roll = atan2f(accel_y, accel_z) * RAD2DEG;
+roll = ALPHA * (roll + gyro_x * DT)
+     + (1.0f - ALPHA) * accel_roll;
+
+// Pitch 상보필터
+float accel_pitch = atan2f(-accel_x,
+  sqrtf(accel_y*accel_y + accel_z*accel_z)) * RAD2DEG;
+pitch = ALPHA * (pitch + gyro_y * DT)
+      + (1.0f - ALPHA) * accel_pitch;` },
+          { type: "h3", text: "🧭 Tilt-Compensated Yaw" },
+          { type: "code", lang: "C", title: "지자기 기울기 보상 Yaw", code: `// Roll/Pitch로 기울기 보상
+float cos_r = cosf(roll * DEG2RAD);
+float sin_r = sinf(roll * DEG2RAD);
+float cos_p = cosf(pitch * DEG2RAD);
+float sin_p = sinf(pitch * DEG2RAD);
+
+float mag_x_comp = mag_x * cos_p
+                 + mag_z * sin_p;
+float mag_y_comp = mag_x * sin_r * sin_p
+                 + mag_y * cos_r
+                 - mag_z * sin_r * cos_p;
+
+float yaw_mag = atan2f(-mag_y_comp, mag_x_comp) * RAD2DEG;
+
+// Yaw 상보필터 (α=0.94)
+yaw = 0.94f * (yaw + gyro_z * DT) + 0.06f * yaw_mag;` },
+          { type: "h3", text: "📈 튜닝 결과" },
+          { type: "ul", items: [
+            "α=0.96: 자이로 96% + 가속도 4% → 드리프트 장기 보정, 단기 노이즈 억제",
+            "Hard-Iron 캘리브레이션: X offset=-14, Y offset=-36 적용하여 정적 자기장 왜곡 제거",
+            "부호 반전: imu->yaw = -filtered_rel_yaw 로 Positive Feedback 루프 해소"
+          ]}
+        ]
+      },
+      {
+        id: 5,
+        title: "카메라 추적 PID 제어기: Anti-Windup과 LPF로 서보 안정화",
+        title_en: "Camera Tracking PID Controller: Servo Stabilization with Anti-Windup & LPF",
+        excerpt: "ESP32 카메라 좌표를 PID 제어기로 처리하여 짐벌 서보를 추적 제어할 때 발생한 누적 오차와 진동 문제 해결.",
+        excerpt_en: "Resolving accumulated error and oscillation in gimbal servo tracking by applying Anti-Windup and Low-Pass Filter to the PID controller processing ESP32 camera coordinates.",��┤
+│ Sector 1 (16KB)  │ 0x08004000  OTA FLAG      │
+│                  │ {magic, size, crc32, ver}  │
+├──────────────────────────────────────────────┤
+│ Sector 2~5       │ 0x08008000  APPLICATION   │
+│ (224KB)          │ ← Linker ORIGIN           │
+├──────────────────────────────────────────────┤
+│ Sector 6~7       │ 0x08040000  DOWNLOAD      │
+│ (256KB)          │ ← ESP8266 Write Target    │
+└──────────────────────────────────────────────┘` },
+          { type: "h3", text: "🔐 벡터 테이블 유효성 검증" },
+          { type: "code", lang: "C", title: "이미지 유효성 검증 함수", code: `static bool valid_image(uint32_t addr, uint32_t size) {
+  if (size < 8U || size > APP_MAX_SIZE) return false;
+  
+  uint32_t sp    = *(__IO uint32_t *)addr;
+  uint32_t reset = *(__IO uint32_t *)(addr + 4U);
+  
+  // SP가 SRAM 범위 내인지, 8-byte aligned인지
+  if (sp < 0x20000000U || sp > 0x20020000U) return false;
+  if (sp & 0x7U) return false;
+  
+  // Reset Handler가 Thumb 모드인지
+  if ((reset & 0x1U) == 0U) return false;
+  
+  // Reset Handler가 APP 영역 내인지
+  uint32_t reset_addr = reset & ~1U;
+  if (reset_addr < addr || reset_addr >= addr + size)
+    return false;
+    
+  return true;
+}` },
+          { type: "h3", text: "📈 OTA 업데이트 시퀀스" },
+          { type: "ul", items: [
+            "1. ESP8266 Wi-Fi → Download Partition에 이미지 저장 + 실시간 CRC32 계산",
+            "2. OTA Flag (0xDEADBEEF) + 메타데이터를 Sector 1에 기록",
+            "3. System Reset → Bootloader가 Flag 읽기",
+            "4. Download → Application 복사 (Word 단위) + CRC32 재검증",
+            "5. Flag 삭제 → Jump_To_App()"
+          ]}
+        ]
+      },
+      {
+        id: 4,
+        title: "상보필터 기반 3축 자세 추정: Roll/Pitch/Yaw 구현 및 튜닝",
+        excerpt: "MPU6050 자이로+가속도, HMC5883L 지자기 데이터를 상보필터로 융합하여 3축 자세를 추정한 구현 기록.",
+        excerpt_en: "Fusing MPU6050 gyro/accelerometer and HMC5883L magnetometer data via complementary filter to estimate Roll/Pitch/Yaw attitude.",
         category: "firmware",
         level: "Advanced",
         date: "2026. 07. 05",
@@ -655,6 +800,7 @@ yaw = 0.94f * (yaw + gyro_z * DT) + 0.06f * yaw_mag;` },
         id: 5,
         title: "카메라 추적 PID 제어기: Anti-Windup과 LPF로 서보 안정화",
         excerpt: "ESP32 카메라 좌표를 PID 제어기로 처리하여 짐벌 서보를 추적 제어할 때 발생한 누적 오차와 진동 문제 해결.",
+        excerpt_en: "Resolving accumulated error and oscillation in gimbal servo tracking by applying Anti-Windup and Low-Pass Filter to the PID controller processing ESP32 camera coordinates.",
         category: "troubleshooting",
         level: "Advanced",
         date: "2026. 06. 28",
@@ -955,6 +1101,7 @@ float yaw_mag = atan2f(-my_comp, mx_comp) * RAD2DEG;` },
         id: 15,
         title: "ATmega328P 하이브리드 UART GPS 수신기: 라이브러리 탈피 Baremetal 설계 및 메모리 최적화",
         excerpt: "외부 라이브러리(TinyGPS++)를 전혀 사용하지 않고 NMEA 원본을 직접 파싱하는 커스텀 펌웨어 설계. 단일 UART 버스 충돌을 Bit-banging으로 극복하고, TinyGPS++ 대비 RAM 17.3%p · Flash 24.6%p 절감을 실측 검증한 Baremetal 최적화 기록.",
+        excerpt_en: "Custom firmware parsing raw NMEA without any external library, overcoming single-UART bus conflict via bit-banging, and achieving RAM −17.3%p / Flash −24.6%p savings over TinyGPS++ verified through PlatformIO builds.",
         category: "firmware",
         level: "Advanced",
         date: "2026. 09. 05",
@@ -1423,6 +1570,7 @@ Flash: 13,272 → 5,318 bytes (-7,954 bytes, -24.6%p)` },
       const btn = e.target.closest('.lang-btn');
       if (!btn || btn.dataset.lang === currentLang) return;
       currentLang = btn.dataset.lang;
+      localStorage.setItem('portfolio-lang', currentLang);
       updateUrlParams();
       document.querySelectorAll('.lang-btn').forEach(b =>
         b.classList.toggle('active', b.dataset.lang === currentLang)
@@ -1453,6 +1601,21 @@ Flash: 13,272 → 5,318 bytes (-7,954 bytes, -24.6%p)` },
       render();
     });
     render();
+
+    /* ========================================
+       DARK / LIGHT THEME TOGGLE
+    ======================================== */
+    function setTheme(theme) {
+      document.documentElement.setAttribute('data-theme', theme);
+      localStorage.setItem('portfolio-theme', theme);
+      document.getElementById('theme-toggle').textContent = theme === 'dark' ? '☀️' : '🌙';
+    }
+    const savedTheme = localStorage.getItem('portfolio-theme') ||
+      (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+    setTheme(savedTheme);
+    document.getElementById('theme-toggle').addEventListener('click', () => {
+      setTheme(document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
+    });
   </script>
 </body>
 </html>

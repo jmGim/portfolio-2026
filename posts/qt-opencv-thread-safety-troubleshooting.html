@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>QThread에서 QLabel을 바꾸면 안 되는 이유: OpenCV 영상 스레드 안전성 — Dev.Embedded</title>
+  <meta name="description" content="Qt OpenCV 영상 스레드의 GUI 직접 접근, 공유 플래그 경쟁, QImage 버퍼 수명, 프레임 차이 포화 연산과 HSV 분류 한계를 분석하고 개선안을 정리한 기록.">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'%3E%3Crect width='48' height='48' rx='12' fill='%230ea5e9'/%3E%3Ctext x='24' y='32' text-anchor='middle' font-family='system-ui' font-weight='800' font-size='14' fill='%23fff'%3E%3E_%3C/text%3E%3C/svg%3E">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap">
+  <link rel="stylesheet" href="troubleshooting-post.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="topbar-brand" href="../blog.html"><span class="brand-mark">&lt;/&gt;</span><span>Dev<span class="brand-accent">.Embedded</span></span></a>
+    <a class="topbar-back" href="../blog.html">← Blog로 돌아가기</a>
+  </header>
+
+  <main>
+    <header class="post-header">
+      <p class="kicker">Troubleshooting · Qt Threading / OpenCV</p>
+      <h1>작업 스레드에서 GUI를 직접 바꾸는 코드:<br>WebCamThread 리뷰와 스레드 안전 설계</h1>
+      <p class="dek">카메라 프레임을 읽는 QThread가 QLabel을 직접 갱신하고 플래그를 동기화 없이 공유합니다. 동작은 하더라도 규칙을 어긴 코드입니다. 문제를 구조적으로 분리하고 signal 기반 구조를 제안합니다.</p>
+      <div class="meta-row">
+        <span class="badge">Advanced</span><span>⏱ 11 min read</span><span>2026. 10. 09</span><span class="status gap">개선 제안 · 미검증</span>
+      </div>
+      <div class="tag-list"><span class="tag">QThread</span><span class="tag">OpenCV</span><span class="tag">HSV</span><span class="tag">Thread Safety</span><span class="tag">C++</span></div>
+      <dl class="summary-grid">
+        <div class="summary-card"><dt>Source</dt><dd>WebCamThread::run()</dd></div>
+        <div class="summary-card"><dt>Features</dt><dd>ROI HSV 분류 · 프레임 변화 감지</dd></div>
+        <div class="summary-card"><dt>핵심 판단</dt><dd>GUI는 메인 스레드에서만</dd></div>
+      </dl>
+    </header>
+
+    <div class="tab-nav-wrap">
+      <nav class="tab-nav" aria-label="글 목차">
+        <a href="#issue" class="active" data-section="issue"><span class="tab-num">01</span>문제 구조</a>
+        <a href="#threading" data-section="threading"><span class="tab-num">02</span>스레드 경계</a>
+        <a href="#vision" data-section="vision"><span class="tab-num">03</span>영상 처리 결함</a>
+        <a href="#design" data-section="design"><span class="tab-num">04</span>개선 설계</a>
+        <a href="#claims" data-section="claims"><span class="tab-num">05</span>주장 범위</a>
+      </nav>
+    </div>
+
+    <article class="post-content">
+      <section class="section" id="issue">
+        <h2>01 문제 구조</h2>
+        <pre class="diagram">  메인 스레드                      WebCamThread::run()
+ ┌────────────────┐               ┌─────────────────────────┐
+ │ QTimer (1s)    │──timerFlag───▶│ VideoCapture(0).read()  │
+ │ UI 체크박스    │──CAM_MODE────▶│ HSV 분류 / 프레임 차이  │
+ │ QLabel(pCamView)◀──setPixmap───│  (직접 호출 ✗)          │
+ └────────────────┘               └─────────────────────────┘
+        동기화 없는 공유: camViewFlag · timerFlag · CAM_MODE · qImage</pre>
+        <div class="callout warning"><h4>왜 위험한가</h4><p>Qt의 QWidget은 메인(GUI) 스레드에서만 접근해야 합니다. 작업 스레드의 <code>setPixmap()</code> 호출은 미정의 동작이며, 증상이 간헐적이라 디버깅이 어렵습니다.</p></div>
+      </section>
+
+      <section class="section" id="threading">
+        <h2>02 스레드 경계 문제</h2>
+        <table class="evidence-table">
+          <thead><tr><th>문제</th><th>설명</th><th>대응</th></tr></thead>
+          <tbody>
+            <tr><td>GUI 직접 접근</td><td><code>run()</code>에서 <code>pCamView-&gt;setPixmap()</code></td><td>프레임을 signal로 전달, 메인 slot에서 표시</td></tr>
+            <tr><td>공유 변수 경쟁</td><td>플래그·모드·qImage를 두 스레드가 동기화 없이 접근</td><td><code>std::atomic</code>, 또는 queued signal/slot으로 전달</td></tr>
+            <tr><td>버퍼 수명</td><td>QImage가 cv::Mat 버퍼를 참조</td><td>전달 시 <code>.copy()</code></td></tr>
+            <tr><td>QTimer 소속</td><td>QThread 객체 생성 스레드(메인)에 속함</td><td>작업 스레드로 옮기거나 의도를 문서화</td></tr>
+            <tr><td>종료 처리</td><td>실행 중 파괴, stop/wait 없음</td><td>종료 요청 플래그 + <code>quit()/wait()</code></td></tr>
+            <tr><td>카메라 실패</td><td><code>exit(1)</code>로 앱 전체 종료</td><td>오류 signal·재시도·안전한 종료</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section class="section" id="vision">
+        <h2>03 영상 처리 결함</h2>
+        <h3>① 프레임 차이: 포화 연산과 누적 카운트</h3>
+        <p><code>abs(securityFrame - frame)</code>는 8비트 포화 뺄셈이라 음수 방향 변화가 0으로 사라집니다. 또한 <code>pixelCnt</code>를 비교마다 초기화하지 않아 “한 번에 10%”라는 설명과 달리 작은 변화가 누적될 수 있습니다.</p>
+        <div class="code-block"><div class="code-header"><span>absdiff + 비교별 카운트</span><span class="code-lang">C++</span></div><pre>cv::Mat diff;
+cv::absdiff(securityFrame, frame, diff);
+std::vector&lt;cv::Mat&gt; ch;
+cv::split(diff, ch);
+cv::Mat mask = (ch[0] &gt; 30) &amp; (ch[1] &gt; 30) &amp; (ch[2] &gt; 30);
+int pixelCnt = cv::countNonZero(mask);        // 비교마다 새로 계산
+bool intruder = pixelCnt &gt;= frame.total() / 10;</pre></div>
+        <h3>② HSV 색상 분류</h3>
+        <p>중앙 64×64 ROI의 Hue 평균만 사용하므로 어둡거나 무채색인 영역에서 Hue가 의미 없어 오분류할 수 있습니다. 최소 채도·밝기 기준을 두고 조건별 오분류율을 측정해야 합니다.</p>
+        <div class="callout info"><h4>용어 정리</h4><p>이 기능은 학습 기반 인식이 아니라 <strong>HSV 임계값·프레임 변화 임계값 기반 규칙 분류</strong>입니다. “AI 침입자 식별”로 부르지 않습니다.</p></div>
+      </section>
+
+      <section class="section" id="design">
+        <h2>04 개선 설계 (제안 · 미적용)</h2>
+        <div class="code-block"><div class="code-header"><span>signal 기반 프레임 전달 + 안전한 종료</span><span class="code-lang">C++</span></div><pre>class WebCamThread : public QThread {
+    Q_OBJECT
+public:
+    void requestStop() { m_stop = true; }
+    void setMode(int m) { m_mode = m; }
+signals:
+    void frameReady(const QImage &amp;img);        // 복사본 전달
+    void cameraError(const QString &amp;msg);
+    void socketSendDataSig(const QString &amp;msg);
+protected:
+    void run() override {
+        cv::VideoCapture cap(0);
+        if (!cap.isOpened()) { emit cameraError("open failed"); return; }
+        cv::Mat frame;
+        while (!m_stop) {
+            if (!cap.read(frame) || frame.empty()) continue;
+            cv::cvtColor(frame, rgb, cv::COLOR_BGR2RGB);
+            emit frameReady(QImage(rgb.data, rgb.cols, rgb.rows,
+                                   rgb.step, QImage::Format_RGB888).copy());
+            // m_mode 에 따라 분석 …
+        }
+    }
+private:
+    std::atomic&lt;bool&gt; m_stop{false};
+    std::atomic&lt;int&gt;  m_mode{0};
+};
+
+// 메인 스레드
+connect(cam, &amp;WebCamThread::frameReady, this, [this](const QImage &amp;i){
+    pCamView-&gt;setPixmap(QPixmap::fromImage(i));   // 메인 스레드에서만
+});
+// 종료: cam-&gt;requestStop(); cam-&gt;wait();</pre></div>
+      </section>
+
+      <section class="section" id="claims">
+        <h2>05 주장 범위</h2>
+        <div class="callout success"><h4>말할 수 있는 것</h4><p>OpenCV로 프레임을 취득하고 ROI HSV 분류·프레임 변화 감지 결과를 TCP 메시지로 전달하는 Qt 영상 응용 프로토타입을 구현했고, 코드 리뷰로 스레드 안전성 과제를 도출했다.</p></div>
+        <div class="callout gap"><h4>아직 말할 수 없는 것</h4><p>FPS·CPU 점유율·지연, 조건별 분류 정확도·오탐률, 장시간 안정성. 측정 전에는 숫자를 쓰지 않습니다.</p></div>
+        <p>다음 단계는 위 구조로 수정한 뒤 반복 시작/정지, 카메라 분리, 앱 종료 시험에서 스레드 경고와 충돌이 없음을 로그로 남기는 것입니다.</p>
+      </section>
+    </article>
+  </main>
+
+  <footer class="post-footer"><span>© 2026 Dev.Embedded</span><a href="../blog.html?cat=troubleshooting">Troubleshooting 글 더 보기 →</a></footer>
+  <script src="troubleshooting-post.js"></script>
+</body>
+</html>

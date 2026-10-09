@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>/dev/ledkey와 QSocketNotifier: 디바이스 파일을 Qt 이벤트 루프에 연결하기 — Dev.Embedded</title>
+  <meta name="description" content="Linux 디바이스 파일의 read/write 계약과 QSocketNotifier로 LED/KEY 장치를 Qt GUI에 연결하는 방법, 그리고 드라이버 readiness와 Qt 6 시그널 시그니처 등 코드 리뷰에서 도출한 보완점.">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'%3E%3Crect width='48' height='48' rx='12' fill='%230ea5e9'/%3E%3Ctext x='24' y='32' text-anchor='middle' font-family='system-ui' font-weight='800' font-size='14' fill='%23fff'%3E%3E_%3C/text%3E%3C/svg%3E">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap">
+  <link rel="stylesheet" href="troubleshooting-post.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="topbar-brand" href="../blog.html"><span class="brand-mark">&lt;/&gt;</span><span>Dev<span class="brand-accent">.Embedded</span></span></a>
+    <a class="topbar-back" href="../blog.html">← Blog로 돌아가기</a>
+  </header>
+
+  <main>
+    <header class="post-header">
+      <p class="kicker">Embedded Linux · Device File I/O</p>
+      <h1>/dev/ledkey를 Qt 이벤트 루프에 연결하기:<br>QSocketNotifier와 디바이스 파일 계약</h1>
+      <p class="dek">장치 파일을 열고 읽고 쓰는 것과, “읽을 데이터가 준비됐다”는 알림을 이벤트 루프로 받는 것은 다른 문제입니다. 사용자 공간이 어디까지 책임지고 드라이버에 무엇을 기대해야 하는지 정리했습니다.</p>
+      <div class="meta-row">
+        <span class="badge">Intermediate</span><span>⏱ 9 min read</span><span>2026. 10. 09</span><span class="status gap">코드 리뷰 기반</span>
+      </div>
+      <div class="tag-list"><span class="tag">Linux</span><span class="tag">Device File</span><span class="tag">Qt</span><span class="tag">QSocketNotifier</span><span class="tag">Raspberry Pi</span></div>
+      <dl class="summary-grid">
+        <div class="summary-card"><dt>Target</dt><dd>Raspberry Pi LED/KEY 구성</dd></div>
+        <div class="summary-card"><dt>Interface</dt><dd>/dev/ledkey · 1바이트 read/write</dd></div>
+        <div class="summary-card"><dt>핵심 판단</dt><dd>활용 코드 ≠ 드라이버 구현</dd></div>
+      </dl>
+    </header>
+
+    <div class="tab-nav-wrap">
+      <nav class="tab-nav" aria-label="글 목차">
+        <a href="#contract" class="active" data-section="contract"><span class="tab-num">01</span>장치 계약</a>
+        <a href="#notifier" data-section="notifier"><span class="tab-num">02</span>이벤트 연결</a>
+        <a href="#pitfalls" data-section="pitfalls"><span class="tab-num">03</span>함정</a>
+        <a href="#hardening" data-section="hardening"><span class="tab-num">04</span>개선 설계</a>
+        <a href="#scope" data-section="scope"><span class="tab-num">05</span>주장 범위</a>
+      </nav>
+    </div>
+
+    <article class="post-content">
+      <section class="section" id="contract">
+        <h2>01 사용자 공간이 아는 장치 계약</h2>
+        <p><code>/dev/ledkey</code>는 사용자 공간 입장에서 “1바이트를 읽으면 눌린 KEY 번호, 1바이트를 쓰면 LED 8비트 패턴”이라는 계약을 가진 문자 장치입니다. GUI는 GPIO 핀 번호나 레지스터를 알 필요가 없습니다.</p>
+        <pre class="diagram">  Qt UI (Tab1)        LedKeyDev                 Kernel
+ ┌──────────┐  slot ┌──────────────┐  write(1B)  ┌──────────────┐
+ │ QDial    │──────▶│ writeLedData │────────────▶│ /dev/ledkey  │──▶ LED[7:0]
+ │ Checkbox │◀──────│ readKeyData  │◀────────────│ (driver)     │◀── KEY[1..8]
+ └──────────┘ signal└──────▲───────┘  read(1B)   └──────────────┘
+                           │ activated
+                    QSocketNotifier(fd, Read)</pre>
+        <div class="code-block"><div class="code-header"><span>LedKeyDev — open 후 notifier 등록</span><span class="code-lang">C++</span></div><pre>pQFile = new QFile(DEVFILENAME);
+if(!pQFile-&gt;open(QFile::ReadWrite | QFile::Unbuffered))
+    QMessageBox::information(this, "open", "open failed " + DEVFILENAME);
+
+int ledkeyFd = pQFile-&gt;handle();
+pQSocketNotifier = new QSocketNotifier(ledkeyFd, QSocketNotifier::Read, this);
+connect(pQSocketNotifier, SIGNAL(activated(int)), this, SLOT(readKeyDataSlot(int)));</pre></div>
+      </section>
+
+      <section class="section" id="notifier">
+        <h2>02 QSocketNotifier가 해주는 일</h2>
+        <p>QSocketNotifier는 소켓뿐 아니라 임의의 파일 디스크립터를 이벤트 루프의 감시 대상(내부적으로 poll/select 계열)에 올립니다. fd가 읽기 가능해지면 <code>activated</code> 신호가 발생하고, slot에서 1바이트를 읽어 <code>updateKeyDataSig</code>로 UI에 전달합니다.</p>
+        <ol class="steps">
+          <li><strong>open</strong> — <code>QFile::handle()</code>로 fd를 얻습니다.</li>
+          <li><strong>감시 등록</strong> — 이벤트 루프가 fd의 읽기 준비를 기다립니다. 스레드 대기 없이 GUI가 계속 반응합니다.</li>
+          <li><strong>read</strong> — 준비 알림이 오면 1바이트 read, 값이 양수일 때만 signal을 발생시킵니다.</li>
+          <li><strong>UI 반영</strong> — KEY 번호를 비트 XOR로 토글해 체크박스·LCD를 갱신합니다.</li>
+        </ol>
+        <div class="callout info"><h4>핵심</h4><p>이벤트 루프는 “fd가 준비됐다”는 <em>커널의 판단</em>을 전달할 뿐입니다. 그 판단은 드라이버의 <code>.poll</code> 구현에 달려 있습니다.</p></div>
+      </section>
+
+      <section class="section" id="pitfalls">
+        <h2>03 코드 리뷰에서 확인한 함정</h2>
+        <table class="evidence-table">
+          <thead><tr><th>항목</th><th>관찰</th><th>위험</th></tr></thead>
+          <tbody>
+            <tr><td><code>Unbuffered</code></td><td>Qt 버퍼 우회 플래그</td><td><code>O_NONBLOCK</code>이 아님. read가 막힐 수 있음</td></tr>
+            <tr><td>readiness</td><td>사용자 코드만으로 IRQ·<code>.poll</code>·wait queue 확인 불가</td><td>poll 미구현 드라이버는 항상 ready로 보여 busy 호출 가능</td></tr>
+            <tr><td>open 실패</td><td>메시지 박스 후 핸들·notifier 생성 계속</td><td>잘못된 fd(-1) 감시</td></tr>
+            <tr><td>KEY 범위</td><td><code>0x01 &lt;&lt; (keyNo-1)</code></td><td>keyNo=0이면 음수 시프트(미정의 동작)</td></tr>
+            <tr><td>write 결과</td><td>반환값 미확인</td><td>부분/실패 write가 UI와 불일치</td></tr>
+            <tr><td>시그널 서명</td><td><code>SIGNAL(activated(int))</code></td><td>Qt 6 문서의 시그니처는 <code>activated(QSocketDescriptor, Type)</code></td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section class="section" id="hardening">
+        <h2>04 개선 설계 (제안 · 미적용)</h2>
+        <div class="callout warning"><h4>상태 표기</h4><p>아래 코드는 리뷰에서 도출한 <strong>개선안</strong>입니다. 실제 보드에서 시험하고 커밋하기 전까지 “적용 완료”로 쓰지 않습니다.</p></div>
+        <div class="code-block"><div class="code-header"><span>open 실패 중단 + 범위 검사 + write 결과 확인</span><span class="code-lang">C++</span></div><pre>bool LedKeyDev::openDevice()
+{
+    pQFile = new QFile(DEVFILENAME, this);          // 부모 소유로 수명 관리
+    if (!pQFile-&gt;open(QFile::ReadWrite | QFile::Unbuffered)) {
+        emit deviceError(pQFile-&gt;errorString());
+        return false;                                // notifier 생성 중단
+    }
+    pQSocketNotifier = new QSocketNotifier(pQFile-&gt;handle(),
+                                           QSocketNotifier::Read, this);
+    connect(pQSocketNotifier, &amp;QSocketNotifier::activated,
+            this, &amp;LedKeyDev::readKeyData);        // 함수 포인터 방식
+    return true;
+}
+
+void LedKeyDev::readKeyData()
+{
+    char keyNo = 0;
+    if (pQFile-&gt;read(&amp;keyNo, 1) != 1) return;
+    if (keyNo &lt; 1 || keyNo &gt; 8) return;             // 유효 범위 1~8
+    emit updateKeyDataSig(int(keyNo));
+}
+
+void LedKeyDev::writeLedData(int ledVal)
+{
+    if (ledVal &lt; 0 || ledVal &gt; 255) return;
+    const char v = static_cast&lt;char&gt;(ledVal);
+    if (pQFile-&gt;write(&amp;v, 1) != 1)
+        emit deviceError("LED write failed");
+}</pre></div>
+        <p>함수 포인터 방식의 connect는 컴파일 시점에 시그널 서명을 검사합니다. Qt 5/6 양쪽에서 같은 코드를 쓰려면 <code>QSocketNotifier::activated</code> 오버로드 차이를 실제 빌드로 확인해야 합니다.</p>
+      </section>
+
+      <section class="section" id="scope">
+        <h2>05 포트폴리오에서 주장할 수 있는 것</h2>
+        <div class="callout success"><h4>말할 수 있는 것</h4><p>Linux 디바이스 파일 계약을 이해하고, fd 읽기 준비 이벤트를 Qt signal/slot으로 연결해 LED/KEY를 GUI에 통합했다.</p></div>
+        <div class="callout gap"><h4>별도 증빙이 필요한 것</h4><p>커널 모듈 소스, <code>file_operations</code>·GPIO 요청·IRQ·<code>.poll</code>, 디바이스 트리, 모듈 로드 로그. 이 저장소에는 없으므로 “드라이버를 직접 개발했다”고 쓰지 않습니다.</p></div>
+        <p>BSP·드라이버 직무에 지원할 때는 이 글의 사용자 공간 계약 설명에 별도 드라이버 저장소와 <code>insmod</code>/<code>dmesg</code> 시험 결과를 함께 붙여야 설득력이 생깁니다.</p>
+      </section>
+    </article>
+  </main>
+
+  <footer class="post-footer"><span>© 2026 Dev.Embedded</span><a href="../blog.html">Blog 글 더 보기 →</a></footer>
+  <script src="troubleshooting-post.js"></script>
+</body>
+</html>

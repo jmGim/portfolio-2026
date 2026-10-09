@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>TCP는 메시지 경계가 없다: Qt 수신 버퍼와 SQLite 저장 트러블슈팅 — Dev.Embedded</title>
+  <meta name="description" content="read 한 번을 명령 한 개로 가정한 Qt TCP 클라이언트의 문제와, 줄바꿈 프레임 분리·필드 검증·prepared query·시작 시 DROP TABLE 이슈를 코드 리뷰로 분석한 기록.">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'%3E%3Crect width='48' height='48' rx='12' fill='%230ea5e9'/%3E%3Ctext x='24' y='32' text-anchor='middle' font-family='system-ui' font-weight='800' font-size='14' fill='%23fff'%3E%3E_%3C/text%3E%3C/svg%3E">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap">
+  <link rel="stylesheet" href="troubleshooting-post.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="topbar-brand" href="../blog.html"><span class="brand-mark">&lt;/&gt;</span><span>Dev<span class="brand-accent">.Embedded</span></span></a>
+    <a class="topbar-back" href="../blog.html">← Blog로 돌아가기</a>
+  </header>
+
+  <main>
+    <header class="post-header">
+      <p class="kicker">Troubleshooting · TCP / SQLite</p>
+      <h1>read 한 번 = 명령 한 개?<br>TCP 스트림 프레이밍과 센서 DB 저장 문제</h1>
+      <p class="dek">서버 명령을 받아 LED를 제어하고 센서를 저장하는 Qt 클라이언트를 리뷰하며, 메시지 경계·버퍼 정체·SQL 조합·재시작 시 데이터 삭제 문제를 분리했습니다. 수정은 제안 단계이며 시험으로 닫아야 합니다.</p>
+      <div class="meta-row">
+        <span class="badge">Advanced</span><span>⏱ 10 min read</span><span>2026. 10. 09</span><span class="status gap">개선 제안 · 미검증</span>
+      </div>
+      <div class="tag-list"><span class="tag">TCP</span><span class="tag">QTcpSocket</span><span class="tag">SQLite</span><span class="tag">Framing</span><span class="tag">Qt</span></div>
+      <dl class="summary-grid">
+        <div class="summary-card"><dt>Protocol</dt><dd>[ID]CMD@값 줄바꿈 텍스트</dd></div>
+        <div class="summary-card"><dt>Receiver</dt><dd>SocketClient · Tab2 파서</dd></div>
+        <div class="summary-card"><dt>핵심 판단</dt><dd>TCP = 바이트 스트림</dd></div>
+      </dl>
+    </header>
+
+    <div class="tab-nav-wrap">
+      <nav class="tab-nav" aria-label="글 목차">
+        <a href="#symptom" class="active" data-section="symptom"><span class="tab-num">01</span>문제 코드</a>
+        <a href="#analysis" data-section="analysis"><span class="tab-num">02</span>원인 분석</a>
+        <a href="#fix" data-section="fix"><span class="tab-num">03</span>프레임 분리</a>
+        <a href="#db" data-section="db"><span class="tab-num">04</span>SQLite</a>
+        <a href="#verify" data-section="verify"><span class="tab-num">05</span>검증 계획</a>
+      </nav>
+    </div>
+
+    <article class="post-content">
+      <section class="section" id="symptom">
+        <h2>01 문제 코드</h2>
+        <div class="code-block"><div class="code-header"><span>SocketClient::socketReadDataSlot</span><span class="code-lang">C++</span></div><pre>void SocketClient::socketReadDataSlot()
+{
+    QByteArray byteRecvData;
+    QString strRecvData;
+    if(pQTcpSocket-&gt;bytesAvailable() &gt; BLOCK_SIZE)
+        return;                                   // (1) 읽지 않고 반환
+    byteRecvData = pQTcpSocket-&gt;read(BLOCK_SIZE);
+    strRecvData = QString::fromLocal8Bit(byteRecvData);
+    emit socketRecvDataSig(strRecvData);          // (2) read 결과 = 메시지 1개
+}</pre></div>
+        <div class="callout warning"><h4>증상 가설 (재현 전)</h4><p>명령이 나뉘어 도착하면 파싱 실패, 한꺼번에 도착하면 뒤 명령이 무시되고, 1024바이트를 넘으면 수신이 멈출 수 있습니다. 실제 재현은 3절의 시험으로 확인합니다.</p></div>
+      </section>
+
+      <section class="section" id="analysis">
+        <h2>02 원인 분석</h2>
+        <ol class="steps">
+          <li><strong>메시지 경계 없음</strong> — TCP read 한 번에는 메시지 일부 또는 여러 개가 들어올 수 있습니다. 현재는 결과 전체를 하나로 파싱하고 마지막 문자 1개를 제거합니다.</li>
+          <li><strong>버퍼 정체</strong> — <code>bytesAvailable() &gt; 1024</code>면 읽지 않고 반환합니다. 버퍼가 줄지 않으면 이후 <code>readyRead</code>에서도 계속 같은 분기를 탈 수 있습니다.</li>
+          <li><strong>필드 검증 부재</strong> — <code>strList[2]</code>, <code>strList[3]</code> 접근 전에 필드 수를 확인하지 않습니다.</li>
+          <li><strong>연결 상태 표시</strong> — 버튼 문구가 connected 시그널이 아니라 IP 입력 확인에 따라 바뀝니다.</li>
+        </ol>
+      </section>
+
+      <section class="section" id="fix">
+        <h2>03 줄바꿈 프레임 분리 (제안)</h2>
+        <p>누적 버퍼에 쌓고, 줄바꿈까지 온 완전한 프레임만 꺼내며, 남은 조각은 유지합니다. 최대 프레임 길이를 넘으면 연결을 정리합니다.</p>
+        <div class="code-block"><div class="code-header"><span>누적 버퍼 기반 수신</span><span class="code-lang">C++</span></div><pre>void SocketClient::onReadyRead()
+{
+    m_buf.append(pQTcpSocket-&gt;readAll());
+
+    while (true) {
+        int nl = m_buf.indexOf('\n');
+        if (nl &lt; 0) break;                         // 불완전 프레임은 보관
+        QByteArray frame = m_buf.left(nl).trimmed();
+        m_buf.remove(0, nl + 1);
+        if (!frame.isEmpty())
+            emit socketRecvDataSig(QString::fromUtf8(frame));
+    }
+    if (m_buf.size() &gt; kMaxFrame) {                // 줄바꿈 없는 폭주 입력 방어
+        m_buf.clear();
+        pQTcpSocket-&gt;disconnectFromHost();
+    }
+}
+
+// 파서: 필드 수 검사 후 접근
+QStringList f = msg.split('@');
+if (f.size() &lt; 4) return;                      // [ID] @ CMD @ 값 → 최소 4필드 확인
+if (f[2] == "LED") {
+    bool ok; int led = f[3].toInt(&amp;ok, 16);
+    if (ok &amp;&amp; led &gt;= 0 &amp;&amp; led &lt;= 255) emit ledWriteSig(led);
+}</pre></div>
+      </section>
+
+      <section class="section" id="db">
+        <h2>04 SQLite 저장 문제</h2>
+        <table class="evidence-table">
+          <thead><tr><th>관찰</th><th>위험</th><th>제안</th></tr></thead>
+          <tbody>
+            <tr><td>SensorManKJMM 생성자에서 <code>drop table sensor_tb</code></td><td>재시작마다 이력 삭제</td><td><code>CREATE TABLE IF NOT EXISTS</code>, 스키마 버전 관리</td></tr>
+            <tr><td><code>date</code> 단일 primary key, 초 단위 문자열</td><td>같은 초 입력 시 insert 실패</td><td>row ID + 밀리초 시각 + 장치 ID</td></tr>
+            <tr><td>SQL 문자열 연결</td><td>따옴표 포함 값으로 쿼리 파손</td><td><code>prepare/bindValue</code></td></tr>
+            <tr><td>기간 조회 <code>ORDER BY</code> 없음, 경계 <code>&lt;=</code>/<code>&lt;</code> 혼재</td><td>표·차트 순서·경계 불일치</td><td>정렬·경계 규칙 통일</td></tr>
+            <tr><td>두 프로그램이 같은 <code>aiot.db</code>, 다른 컬럼</td><td>스키마 충돌</td><td>DB 경로·버전 분리</td></tr>
+          </tbody>
+        </table>
+        <div class="code-block"><div class="code-header"><span>prepared query 예시</span><span class="code-lang">C++</span></div><pre>QSqlQuery q;
+q.prepare("INSERT INTO sensor_tb(device, ts_ms, illu, temp, humi) "
+          "VALUES(:d, :t, :i, :tp, :h)");
+q.bindValue(":d",  deviceId);
+q.bindValue(":t",  QDateTime::currentMSecsSinceEpoch());
+q.bindValue(":i",  illu);
+q.bindValue(":tp", temp);
+q.bindValue(":h",  humi);
+if (!q.exec()) qWarning() &lt;&lt; q.lastError().text();</pre></div>
+      </section>
+
+      <section class="section" id="verify">
+        <h2>05 검증 계획 (미실시)</h2>
+        <table class="evidence-table">
+          <thead><tr><th>시험</th><th>입력</th><th>합격 조건</th></tr></thead>
+          <tbody>
+            <tr><td>분할</td><td>한 명령을 두 번에 나눠 전송</td><td>한 번만 파싱</td></tr>
+            <tr><td>병합</td><td>명령 3개를 한 write로 전송</td><td>3개 모두 처리</td></tr>
+            <tr><td>대용량</td><td>1024바이트 초과 입력</td><td>수신 정지 없음</td></tr>
+            <tr><td>잘못된 필드</td><td>필드 수 부족·비16진수</td><td>크래시 없이 무시·로그</td></tr>
+            <tr><td>DB 재시작</td><td>저장 → 종료 → 재실행</td><td>행 수·값 동일</td></tr>
+            <tr><td>동일 초 입력</td><td>같은 초 2건</td><td>두 건 모두 저장</td></tr>
+          </tbody>
+        </table>
+        <div class="callout gap"><h4>정리</h4><p>이 글은 코드 리뷰와 설계 제안입니다. 위 시험을 통과한 수정 커밋이 생기면 문제 → 원인 → 해결 → 결과 순서로 갱신합니다. 그 전에는 “해결했다”고 쓰지 않습니다.</p></div>
+      </section>
+    </article>
+  </main>
+
+  <footer class="post-footer"><span>© 2026 Dev.Embedded</span><a href="../blog.html?cat=troubleshooting">Troubleshooting 글 더 보기 →</a></footer>
+  <script src="troubleshooting-post.js"></script>
+</body>
+</html>
