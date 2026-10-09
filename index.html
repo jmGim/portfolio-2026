@@ -539,6 +539,20 @@
       line-height: 1.65;
     }
 
+    /* sk-desc: 행번호 + 한 줄 요약 / 토글 전체 보기 */
+    .sk-lines { list-style: none; margin: 0; padding: 0; }
+    .sk-lines li { display: none; align-items: baseline; gap: 8px; padding: 5px 0; border-bottom: 1px dashed var(--line); font-size: 12.5px; line-height: 1.6; color: var(--muted); }
+    .sk-lines li:first-child { display: flex; }
+    .sk-desc.open .sk-lines li { display: flex; }
+    .sk-lines li:last-child { border-bottom: 0; }
+    .sk-ln { flex: none; font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 700; color: var(--cyan); }
+    .sk-name { flex: none; font-weight: 700; color: var(--text); }
+    .sk-name::after { content: ' —'; color: var(--muted); font-weight: 400; }
+    .sk-txt { min-width: 0; }
+    .sk-toggle { margin-top: 8px; padding: 4px 12px; border: 1px solid var(--line); border-radius: 999px; background: transparent; color: var(--cyan); font-size: 12px; font-weight: 700; cursor: pointer; transition: background .2s; }
+    .sk-toggle:hover { background: rgba(14, 165, 233, .08); }
+
+
     .project-card {
       background: var(--bg-white);
       border-radius: 20px;
@@ -1408,8 +1422,16 @@ Data-driven Embedded SW Engineer
             <span class="sk">Verilog HDL</span>
             <span class="sk">Linux Shell</span>
           </div>
-          <p class="sk-desc">STM32 펌웨어 전체를 C로 구현 (HAL + Bare-metal). Verilog로 DHT11 40-bit 타이밍 파싱 및 PWM 제어 로직 설계.
-            Python으로 YOLOv8 학습·추론 및 시리얼 데이터 시각화.</p>
+          <div class="sk-desc">
+            <ol class="sk-lines">
+              <li><span class="sk-ln">01</span><span class="sk-name">C</span><span class="sk-txt">STM32 펌웨어 전체 C 구현 (HAL + Bare-metal)</span></li>
+              <li><span class="sk-ln">02</span><span class="sk-name">C++</span><span class="sk-txt">Qt 기반 장치 제어·TCP 통신·영상 처리 응용 구현</span></li>
+              <li><span class="sk-ln">03</span><span class="sk-name">Python</span><span class="sk-txt">YOLOv8 학습·추론 및 시리얼 데이터 시각화</span></li>
+              <li><span class="sk-ln">04</span><span class="sk-name">Verilog HDL</span><span class="sk-txt">DHT11 40-bit 타이밍 파싱 및 PWM 제어 로직 설계</span></li>
+              <li><span class="sk-ln">05</span><span class="sk-name">Linux Shell</span><span class="sk-txt">리눅스 환경 빌드·장치 제어 보조 스크립트 활용</span></li>
+            </ol>
+            <button type="button" class="sk-toggle" aria-expanded="false" data-total="5">전체 보기 (5)</button>
+          </div>
         </article>
 
         <!-- Dev Tools -->
@@ -1422,8 +1444,16 @@ Data-driven Embedded SW Engineer
             <span class="sk">Makefile</span>
             <span class="sk">vi / Vim</span>
           </div>
-          <p class="sk-desc">CubeIDE로 NVIC 우선순위, 클럭 트리, 핀맵 설정. Organization 기반 Git 브랜치 관리 (feature/imu, hotfix/ota).
-            Makefile 빌드 자동화 경험.</p>
+          <div class="sk-desc">
+            <ol class="sk-lines">
+              <li><span class="sk-ln">01</span><span class="sk-name">STM32CubeIDE</span><span class="sk-txt">NVIC 우선순위·클럭 트리·핀맵 설정</span></li>
+              <li><span class="sk-ln">02</span><span class="sk-name">VSCode</span><span class="sk-txt">다국어 소스 편집·디버깅 환경 활용</span></li>
+              <li><span class="sk-ln">03</span><span class="sk-name">Git / GitHub / GitLab</span><span class="sk-txt">Organization 기반 브랜치 관리 (feature/imu, hotfix/ota)</span></li>
+              <li><span class="sk-ln">04</span><span class="sk-name">Makefile</span><span class="sk-txt">빌드 자동화 경험</span></li>
+              <li><span class="sk-ln">05</span><span class="sk-name">vi / Vim</span><span class="sk-txt">터미널 기반 소스 편집 경험</span></li>
+            </ol>
+            <button type="button" class="sk-toggle" aria-expanded="false" data-total="5">전체 보기 (5)</button>
+          </div>
         </article>
 
         <!-- Protocol -->
@@ -1437,8 +1467,17 @@ Data-driven Embedded SW Engineer
             <span class="sk">MQTT</span>
             <span class="sk">AT Command</span>
           </div>
-          <p class="sk-desc">I2C1 버스에 MPU6050+HMC5883L 2디바이스 동시 운용, Mutex 기반 버스 중재. UART DMA 송수신으로 CLI/모니터 구현. ESP8266
-            AT 명령 기반 Wi-Fi OTA 다운로드. CAN 프로토콜 학습 완료.</p>
+          <div class="sk-desc">
+            <ol class="sk-lines">
+              <li><span class="sk-ln">01</span><span class="sk-name">I2C</span><span class="sk-txt">I2C1 버스 MPU6050+HMC5883L 2디바이스 동시 운용, Mutex 기반 버스 중재</span></li>
+              <li><span class="sk-ln">02</span><span class="sk-name">UART (DMA)</span><span class="sk-txt">DMA 송수신 기반 CLI·모니터 구현</span></li>
+              <li><span class="sk-ln">03</span><span class="sk-name">SPI</span><span class="sk-txt">SPI 주변장치 연동 활용</span></li>
+              <li><span class="sk-ln">04</span><span class="sk-name">CAN / CAN-FD</span><span class="sk-txt">CAN 프로토콜 학습 및 USB-CAN 0프레임 원인 분리 분석</span></li>
+              <li><span class="sk-ln">05</span><span class="sk-name">MQTT</span><span class="sk-txt">AWS/IBM Gateway 연계 센서 데이터 파이프라인 구축</span></li>
+              <li><span class="sk-ln">06</span><span class="sk-name">AT Command</span><span class="sk-txt">ESP8266 AT 명령 기반 Wi-Fi OTA 다운로드</span></li>
+            </ol>
+            <button type="button" class="sk-toggle" aria-expanded="false" data-total="6">전체 보기 (6)</button>
+          </div>
         </article>
 
         <!-- Framework -->
@@ -1451,8 +1490,16 @@ Data-driven Embedded SW Engineer
             <span class="sk">Linux Kernel</span>
             <span class="sk">Qt6</span>
           </div>
-          <p class="sk-desc">FreeRTOS 6-Task 아키텍처 설계. Semaphore로 ISR-Task 동기화, Mutex로 I2C 공유 자원 보호, 우선순위 역전 분석. Linux
-            디바이스 드라이버(chardev) 구현 학습.</p>
+          <div class="sk-desc">
+            <ol class="sk-lines">
+              <li><span class="sk-ln">01</span><span class="sk-name">FreeRTOS (CMSIS-RTOS2)</span><span class="sk-txt">6-Task 아키텍처 설계, Semaphore 기반 ISR-Task 동기화, Mutex 기반 I2C 공유 자원 보호, 우선순위 역전 분석</span></li>
+              <li><span class="sk-ln">02</span><span class="sk-name">HAL / LL Driver</span><span class="sk-txt">STM32 HAL 기반 주변장치 제어 구현</span></li>
+              <li><span class="sk-ln">03</span><span class="sk-name">Device Driver</span><span class="sk-txt">Linux 디바이스 드라이버(chardev) 구현 학습 및 /dev/ledkey 인터페이스 활용</span></li>
+              <li><span class="sk-ln">04</span><span class="sk-name">Linux Kernel</span><span class="sk-txt">디바이스 파일 계약 이해 및 사용자 공간 연동</span></li>
+              <li><span class="sk-ln">05</span><span class="sk-name">Qt6</span><span class="sk-txt">Qt Widgets 기반 LED/KEY 제어 GUI 구현, signal/slot 이벤트 연결</span></li>
+            </ol>
+            <button type="button" class="sk-toggle" aria-expanded="false" data-total="5">전체 보기 (5)</button>
+          </div>
         </article>
 
         <!-- Board & MCU -->
@@ -1466,8 +1513,17 @@ Data-driven Embedded SW Engineer
             <span class="sk">AVR (Arduino Uno)</span>
             <span class="sk">FPGA (Basys3)</span>
           </div>
-          <p class="sk-desc">STM32에서 HAL + FreeRTOS 기반 짐벌·OTA 구현. Jetson Nano에서 YOLOv8 TensorRT FP16 추론 최적화. RPi C 소켓
-            서버·크로스 컴파일 구축.</p>
+          <div class="sk-desc">
+            <ol class="sk-lines">
+              <li><span class="sk-ln">01</span><span class="sk-name">STM32F411 (ST-Link)</span><span class="sk-txt">HAL + FreeRTOS 기반 짐벌·OTA 구현</span></li>
+              <li><span class="sk-ln">02</span><span class="sk-name">ESP32 / ESP8266</span><span class="sk-txt">ESP8266 AT 명령 기반 Wi-Fi 연동</span></li>
+              <li><span class="sk-ln">03</span><span class="sk-name">Raspberry Pi</span><span class="sk-txt">C 소켓 서버·크로스 컴파일 구축, LED/KEY Qt 연동</span></li>
+              <li><span class="sk-ln">04</span><span class="sk-name">Jetson Nano</span><span class="sk-txt">YOLOv8 TensorRT FP16 추론 최적화</span></li>
+              <li><span class="sk-ln">05</span><span class="sk-name">AVR (Arduino Uno)</span><span class="sk-txt">소규모 제어 프로젝트 경험</span></li>
+              <li><span class="sk-ln">06</span><span class="sk-name">FPGA (Basys3)</span><span class="sk-txt">Verilog 기반 DHT11 파싱·PWM 제어 로직 구현</span></li>
+            </ol>
+            <button type="button" class="sk-toggle" aria-expanded="false" data-total="6">전체 보기 (6)</button>
+          </div>
         </article>
 
         <!-- Edge / Cloud / AI -->
@@ -1481,8 +1537,17 @@ Data-driven Embedded SW Engineer
             <span class="sk">OpenCV / YOLOv8</span>
             <span class="sk">TensorRT</span>
           </div>
-          <p class="sk-desc">MQTT → AWS/IBM Gateway로 센서 데이터 파이프라인 구축. YOLOv8n/s 학습 후 Jetson에서 TensorRT FP16 변환, 벤치마크(FPS
-            +24.9%, p95 −18.6%). Grafana 대시보드 실시간 모니터링.</p>
+          <div class="sk-desc">
+            <ol class="sk-lines">
+              <li><span class="sk-ln">01</span><span class="sk-name">AWS IoT Core</span><span class="sk-txt">MQTT 기반 AWS Gateway 센서 데이터 전송</span></li>
+              <li><span class="sk-ln">02</span><span class="sk-name">IBM Watson IoT</span><span class="sk-txt">MQTT 기반 IBM Gateway 센서 데이터 전송</span></li>
+              <li><span class="sk-ln">03</span><span class="sk-name">Node-RED</span><span class="sk-txt">플로우 기반 데이터 파이프라인 구성 활용</span></li>
+              <li><span class="sk-ln">04</span><span class="sk-name">Grafana / InfluxDB</span><span class="sk-txt">대시보드 기반 실시간 모니터링</span></li>
+              <li><span class="sk-ln">05</span><span class="sk-name">OpenCV / YOLOv8</span><span class="sk-txt">YOLOv8n/s 학습 및 OpenCV 영상 처리 응용</span></li>
+              <li><span class="sk-ln">06</span><span class="sk-name">TensorRT</span><span class="sk-txt">Jetson FP16 변환, 벤치마크 (FPS +24.9%, p95 −18.6%)</span></li>
+            </ol>
+            <button type="button" class="sk-toggle" aria-expanded="false" data-total="6">전체 보기 (6)</button>
+          </div>
         </article>
 
         <!-- Awards -->
@@ -1557,7 +1622,7 @@ Data-driven Embedded SW Engineer
     =============================================== */
     const projects = {
       qtledkey: {
-        title: "Qt · Linux 디바이스 파일 LED/KEY 연동 IoT 시스템",
+        title: "Qt + Device Driver Mini Project — LED/KEY 제어 IoT 모니터링",
         subtitle: "/dev/ledkey 사용자 공간 연동 + Qt GUI · TCP · 차트 · SQLite · OpenCV",
         image: "images/11.Qt_LedKey_Device_Driver_img.jpg",
         brief: "Raspberry Pi LED/KEY 디바이스 파일을 Qt 이벤트 루프에 연결하고 TCP·센서 차트·SQLite·OpenCV로 확장",
@@ -2356,7 +2421,7 @@ exports.handler = async (event) => {
 
     /* ===== Main / Sub 프로젝트 분리 ===== */
     const mainProjects = ['bmsota', 'gimbal', 'verilog'];
-    const subProjects = ['yolo', 'parking', 'vending', 'airdrum', 'store', 'rhythm', 'gps', 'awsslack', 'qtledkey'];
+    const subProjects = ['qtledkey', 'yolo', 'parking', 'vending', 'airdrum', 'store', 'rhythm', 'gps', 'awsslack'];
     // 'cctv' — 비공개 처리
     const projectOrder = [...mainProjects, ...subProjects];
 
@@ -2743,6 +2808,16 @@ exports.handler = async (event) => {
     document.getElementById('lang-toggle').addEventListener('click', toggleLang);
     document.getElementById('lang-toggle-m').addEventListener('click', toggleLang);
   </script>
+<script>
+document.addEventListener('click', function (e) {
+  var b = e.target.closest('.sk-toggle');
+  if (!b) return;
+  var box = b.closest('.sk-desc');
+  var open = box.classList.toggle('open');
+  b.setAttribute('aria-expanded', open);
+  b.textContent = open ? '접기' : '전체 보기 (' + b.dataset.total + ')';
+});
+</script>
 </body>
 
 </html>
