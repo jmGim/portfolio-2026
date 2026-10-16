@@ -1616,6 +1616,8 @@ Data-driven Embedded SW Engineer
     </div>
   </div>
 
+  <script src="projects-en.js"></script>
+  <script src="i18n-projects.js"></script>
   <script>
     /* ==============================================
        PROJECT DATA — 이미지 번호/제목별 매칭
@@ -2434,7 +2436,7 @@ exports.handler = async (event) => {
        PROJECT CARD GRID 생성 (Main / Sub 분리)
     =============================================== */
     function createCard(key, idx, isMain) {
-      const p = projects[key];
+      const p = localizeProject(key);
       const displayNum = idx + 1;
       const card = document.createElement('div');
       card.className = 'project-card reveal-stagger' + (isMain ? ' project-card--main' : '');
@@ -2442,7 +2444,7 @@ exports.handler = async (event) => {
       card.dataset.project = key;
       card.setAttribute('role', 'button');
       card.setAttribute('tabindex', '0');
-      card.setAttribute('aria-label', `${p.title} 상세 보기`);
+      card.setAttribute('aria-label', `${p.title} ${ui().detailAria}`);
       card.innerHTML = `
         <img class="project-card-img" src="${p.image}" alt="${p.title}" loading="lazy">
         <div class="project-card-body">
@@ -2477,7 +2479,7 @@ exports.handler = async (event) => {
       };
       for (const [key, s] of Object.entries(map)) {
         if (text.startsWith(key)) {
-          const label = key.slice(1, -1);
+          const label = tsLabel(key.slice(1, -1));
           return `<span class="ts-badge" style="background:${s.bg};color:${s.color}">${label}</span>${text.slice(key.length).trim()}`;
         }
       }
@@ -2507,24 +2509,24 @@ exports.handler = async (event) => {
       /* 메타 정보 카드 (기간, H/W 등) */
       if (p.period || p.hw || p.target) {
         html += `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;margin:20px 0 8px">`;
-        if (p.period) html += `<div style="padding:14px 16px;border-radius:12px;background:var(--bg);border:1px solid var(--line)"><div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:3px">기간</div><div style="font-size:13px;font-weight:600">${p.period}</div></div>`;
-        if (p.hw) html += `<div style="padding:14px 16px;border-radius:12px;background:var(--bg);border:1px solid var(--line)"><div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:3px">하드웨어</div><div style="font-size:13px;font-weight:600">${p.hw}</div></div>`;
-        if (p.target) html += `<div style="padding:14px 16px;border-radius:12px;background:var(--bg);border:1px solid var(--line)"><div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:3px">지원 직무</div><div style="font-size:13px;font-weight:600">${p.target}</div></div>`;
+        if (p.period) html += `<div style="padding:14px 16px;border-radius:12px;background:var(--bg);border:1px solid var(--line)"><div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:3px">${ui().period}</div><div style="font-size:13px;font-weight:600">${p.period}</div></div>`;
+        if (p.hw) html += `<div style="padding:14px 16px;border-radius:12px;background:var(--bg);border:1px solid var(--line)"><div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:3px">${ui().hw}</div><div style="font-size:13px;font-weight:600">${p.hw}</div></div>`;
+        if (p.target) html += `<div style="padding:14px 16px;border-radius:12px;background:var(--bg);border:1px solid var(--line)"><div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:3px">${ui().target}</div><div style="font-size:13px;font-weight:600">${p.target}</div></div>`;
         html += `</div>`;
       }
 
       /* 담당 역할 */
-      html += `<h3>💼 담당 역할</h3>`;
+      html += `<h3>${ui().role}</h3>`;
       html += `<ul>${p.role.map(r => `<li>${r}</li>`).join('')}</ul>`;
       if (p.roleNote) html += `<p style="font-size:12px;color:var(--muted);margin-top:4px">${p.roleNote}</p>`;
 
       /* 시스템 구성 */
-      html += `<h3>🏗️ 시스템 구성</h3>`;
+      html += `<h3>${ui().arch}</h3>`;
       html += `<ul>${p.architecture.map(a => `<li>${a}</li>`).join('')}</ul>`;
 
       /* 핵심 구현 섹션 (detailSections) */
       if (p.detailSections && p.detailSections.length) {
-        html += `<h3 style="margin-top:32px;font-size:18px;border-bottom:2px solid var(--line);padding-bottom:10px">📌 핵심 구현 및 동작 원리</h3>`;
+        html += `<h3 style="margin-top:32px;font-size:18px;border-bottom:2px solid var(--line);padding-bottom:10px">${ui().detail}</h3>`;
         p.detailSections.forEach(sec => {
           html += `<h3 style="font-size:15px;margin-top:24px">${sec.heading}</h3>`;
           html += `<p style="color:var(--text-s);font-size:14px;line-height:1.7">${sec.desc}</p>`;
@@ -2539,9 +2541,10 @@ exports.handler = async (event) => {
 
       /* 검증 근거 (verification) */
       if (p.verification && p.verification.length) {
-        html += `<h3 style="margin-top:32px;font-size:18px;border-bottom:2px solid var(--line);padding-bottom:10px">📊 동작 조건 및 검증 근거</h3>`;
+        html += `<h3 style="margin-top:32px;font-size:18px;border-bottom:2px solid var(--line);padding-bottom:10px">${ui().verif}</h3>`;
         html += `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;margin:16px 0">`;
         p.verification.forEach(item => {
+          if (typeof item === 'string') item = { label: '✔', value: item };
           html += `<div style="padding:14px 16px;border-radius:12px;background:linear-gradient(135deg,rgba(14,165,233,.04),rgba(16,185,129,.04));border:1px solid rgba(14,165,233,.12)"><div style="font-size:11px;font-weight:800;color:var(--cyan);letter-spacing:.06em;margin-bottom:5px">${item.label}</div><div style="font-size:13px;font-weight:600;line-height:1.55;color:var(--text-s)">${item.value}</div></div>`;
         });
         html += `</div>`;
@@ -2549,27 +2552,27 @@ exports.handler = async (event) => {
 
       /* 트러블슈팅 (상세) */
       if (p.troubleDetail && p.troubleDetail.length) {
-        html += `<h3 style="margin-top:32px;font-size:18px;border-bottom:2px solid var(--line);padding-bottom:10px">🔧 트러블 슈팅 (Troubleshooting)</h3>`;
+        html += `<h3 style="margin-top:32px;font-size:18px;border-bottom:2px solid var(--line);padding-bottom:10px">${ui().ts}</h3>`;
         p.troubleDetail.forEach(td => {
           html += `
             <div style="margin:16px 0;padding:20px;border-radius:14px;background:var(--bg);border:1px solid var(--line)">
               <div style="margin-bottom:10px"><span class="ts-badge" style="background:rgba(14,165,233,.1);color:var(--cyan)">${td.badge}</span><strong style="font-size:15px">${td.title}</strong></div>
-              <p style="font-size:13px;color:var(--text-s);margin-bottom:10px"><strong style="color:var(--text)">증상:</strong> ${td.symptom}</p>
-              <p style="font-size:13px;color:var(--text-s);margin-bottom:6px"><strong style="color:var(--text)">원인 분석:</strong></p>
+              <p style="font-size:13px;color:var(--text-s);margin-bottom:10px"><strong style="color:var(--text)">${ui().symptom}</strong> ${td.symptom}</p>
+              <p style="font-size:13px;color:var(--text-s);margin-bottom:6px"><strong style="color:var(--text)">${ui().cause}</strong></p>
               <ul style="margin-bottom:10px">${td.cause.map(c => `<li style="font-size:13px">${c}</li>`).join('')}</ul>
-              <p style="font-size:13px;color:var(--text-s);margin-bottom:6px"><strong style="color:var(--green)">해결 및 개선:</strong></p>
+              <p style="font-size:13px;color:var(--text-s);margin-bottom:6px"><strong style="color:var(--green)">${ui().fix}</strong></p>
               <ul>${td.solution.map(s => `<li style="font-size:13px">${s}</li>`).join('')}</ul>
             </div>`;
         });
       } else {
         /* 기존 프로젝트용 단순 트러블슈팅 */
-        html += `<h3>🔧 트러블슈팅 / 오차 검증 경험</h3>`;
+        html += `<h3>${ui().tsSimple}</h3>`;
         html += `<ul>${p.troubleshooting.map(t => `<li>${formatTS(t)}</li>`).join('')}</ul>`;
       }
 
       /* 역량 요약 */
       if (p.capabilitySummary) {
-        html += `<div style="margin:24px 0;padding:18px 20px;border-radius:14px;background:linear-gradient(135deg,rgba(14,165,233,.04),rgba(16,185,129,.04));border:1px solid rgba(14,165,233,.12)"><p style="font-size:14px;line-height:1.7;color:var(--text-s);margin:0"><strong style="color:var(--text)">💡 개인 역량 요약:</strong> ${p.capabilitySummary}</p></div>`;
+        html += `<div style="margin:24px 0;padding:18px 20px;border-radius:14px;background:linear-gradient(135deg,rgba(14,165,233,.04),rgba(16,185,129,.04));border:1px solid rgba(14,165,233,.12)"><p style="font-size:14px;line-height:1.7;color:var(--text-s);margin:0"><strong style="color:var(--text)">${ui().cap}</strong> ${p.capabilitySummary}</p></div>`;
       }
 
       /* 링크 */
@@ -2583,7 +2586,7 @@ exports.handler = async (event) => {
 
     function renderMatrix() {
       const rows = projectOrder.map(key => {
-        const p = projects[key];
+        const p = localizeProject(key);
         return `
         <tr>
           <td><strong>${p.title}</strong><br><small style="color:var(--muted)">${p.subtitle}</small></td>
@@ -2593,21 +2596,24 @@ exports.handler = async (event) => {
         </tr>`;
       }).join('');
       return `
-        <p class="eyebrow">All ${projectOrder.length} Projects Overview</p>
+        <p class="eyebrow">${ui().matrixEyebrow(projectOrder.length)}</p>
         <h2>Project Matrix</h2>
         <table class="matrix">
-          <thead><tr><th>프로젝트</th><th>핵심 스택</th><th>주요 역할</th><th>대표 문제해결</th></tr></thead>
+          <thead><tr>${ui().cols.map(c => `<th>${c}</th>`).join('')}</tr></thead>
           <tbody>${rows}</tbody>
         </table>`;
     }
 
+    let currentModalKey = null;
     function openModal(key) {
-      modalTitle.textContent = key === 'all' ? 'Project Matrix' : projects[key].title;
-      modalBody.innerHTML = key === 'all' ? renderMatrix() : renderProject(projects[key]);
+      currentModalKey = key;
+      modalTitle.textContent = key === 'all' ? ui().matrixTitle : localizeProject(key).title;
+      modalBody.innerHTML = key === 'all' ? renderMatrix() : renderProject(localizeProject(key));
       overlay.classList.add('active');
       document.body.style.overflow = 'hidden';
     }
     function closeModal() {
+      currentModalKey = null;
       overlay.classList.remove('active');
       document.body.style.overflow = '';
     }
@@ -2787,8 +2793,8 @@ exports.handler = async (event) => {
       document.documentElement.lang = lang === 'ko' ? 'ko' : 'en';
 
       // Update toggle button text
-      const btnText = lang === 'ko' ? 'EN' : 'KO';
-      const mBtnText = lang === 'ko' ? '🌐 EN' : '🌐 KO';
+      const btnText = lang === 'ko' ? 'KO' : 'EN';
+      const mBtnText = lang === 'ko' ? '🌐 KO' : '🌐 EN';
       document.getElementById('lang-toggle').textContent = btnText;
       document.getElementById('lang-toggle-m').textContent = mBtnText;
 
@@ -2796,6 +2802,13 @@ exports.handler = async (event) => {
       document.querySelectorAll('[data-ko][data-en]').forEach(el => {
         el.innerHTML = el.getAttribute(`data-${lang}`);
       });
+
+      // Re-render project cards and (if open) the modal in the current language
+      refreshCards();
+      if (currentModalKey && overlay.classList.contains('active')) {
+        modalTitle.textContent = currentModalKey === 'all' ? ui().matrixTitle : localizeProject(currentModalKey).title;
+        modalBody.innerHTML = currentModalKey === 'all' ? renderMatrix() : renderProject(localizeProject(currentModalKey));
+      }
     }
 
     // Initialize language
