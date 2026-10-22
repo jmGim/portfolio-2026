@@ -65,3 +65,13 @@ function refreshCards() {
     card.setAttribute('aria-label', p.title + ' ' + ui().detailAria);
   });
 }
+
+/* 기술 스택 카드의 "전체 보기 (N) / 접기" 토글 문구 (언어별) */
+function skToggleLabel(b) {
+  const en = getLang() === 'en';
+  const open = b.getAttribute('aria-expanded') === 'true';
+  return open ? (en ? 'Collapse' : '접기') : (en ? 'Show all (' + b.dataset.total + ')' : '전체 보기 (' + b.dataset.total + ')');
+}
+function refreshSkToggles() {
+  document.querySelectorAll('.sk-toggle').forEach(b => { b.textContent = skToggleLabel(b); });
+}
